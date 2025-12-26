@@ -1,8 +1,8 @@
 use bevy::prelude::*;
 
-pub const GRID_WIDTH: i32 = 5;
+pub const GRID_WIDTH: i32 = 8;
 pub const GRID_HEIGHT: i32 = 15;
-pub const GRID_DEPTH: i32 = 5;
+pub const GRID_DEPTH: i32 = 8;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum TetrominoType {
