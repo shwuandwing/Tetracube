@@ -190,6 +190,46 @@ pub fn can_place(positions: &[IVec3], pivot: IVec3, grid: &GameGrid) -> bool {
     true
 }
 
+pub fn calculate_hard_drop(tetromino: &Tetromino, grid: &GameGrid) -> IVec3 {
+    let mut current_pivot = tetromino.pivot;
+    loop {
+        let next_y_pivot = current_pivot + IVec3::new(0, -1, 0);
+        if can_place(&tetromino.positions, next_y_pivot, grid) {
+            current_pivot = next_y_pivot;
+        } else {
+            break;
+        }
+    }
+    current_pivot
+}
+
+#[derive(Resource, Default)]
+pub struct GameStats {
+    pub score: u32,
+    pub level: u32,
+}
+
+impl GameStats {
+    pub fn new() -> Self {
+        Self { score: 0, level: 1 }
+    }
+
+    pub fn add_lines(&mut self, lines: u32) -> bool {
+        if lines == 0 { return false; }
+        self.score += lines * 100;
+        let new_level = (self.score / 500) + 1;
+        if new_level > self.level {
+            self.level = new_level;
+            return true;
+        }
+        false
+    }
+
+    pub fn get_fall_speed(&self) -> f32 {
+        (0.8 - (self.level as f32 - 1.0) * 0.1).max(0.1)
+    }
+}
+
 pub fn get_shape_blocks(piece_type: TetrominoType) -> Vec<IVec3> {
     match piece_type {
         // Defined in X/Z plane (y=0)
@@ -382,5 +422,42 @@ mod tests {
         
         // Simple case: try_rotate_with_kicks should return true if valid.
         assert!(try_rotate_with_kicks(&mut tetromino, IVec3::Y, true, &grid));
+    }
+
+    #[test]
+    fn test_calculate_hard_drop() {
+        let mut grid = GameGrid::new();
+        let tetromino = Tetromino {
+            positions: vec![IVec3::ZERO],
+            pivot: IVec3::new(0, 10, 0),
+            color: Color::WHITE,
+        };
+        
+        // Should drop to y=0
+        let drop_pivot = calculate_hard_drop(&tetromino, &grid);
+        assert_eq!(drop_pivot.y, 0);
+
+        // Block at y=2
+        grid.set(0, 2, 0, Color::WHITE);
+        let drop_pivot_blocked = calculate_hard_drop(&tetromino, &grid);
+        assert_eq!(drop_pivot_blocked.y, 3);
+    }
+
+    #[test]
+    fn test_game_stats_progression() {
+        let mut stats = GameStats::new();
+        assert_eq!(stats.level, 1);
+        assert_eq!(stats.get_fall_speed(), 0.8);
+
+        // Add 5 lines -> 500 points -> Level 2
+        let leveled_up = stats.add_lines(5);
+        assert!(leveled_up);
+        assert_eq!(stats.level, 2);
+        assert_eq!(stats.get_fall_speed(), 0.7);
+
+        // More points...
+        stats.add_lines(10); // 1000 more -> 1500 total -> Level 4
+        assert_eq!(stats.level, 4);
+        assert_eq!(stats.get_fall_speed(), 0.5);
     }
 }

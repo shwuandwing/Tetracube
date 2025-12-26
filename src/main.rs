@@ -39,9 +39,6 @@ struct NextPieceText;
 struct LevelText;
 
 #[derive(Resource)]
-struct Level(u32);
-
-#[derive(Resource)]
 struct AudioHandles {
     move_sound: Handle<AudioSource>,
     rotate_sound: Handle<AudioSource>,
@@ -67,8 +64,7 @@ fn main() {
             fall_timer: Timer::from_seconds(0.8, TimerMode::Repeating),
         })
         .insert_resource(NextPiece(get_random_piece())) // Initialize next piece
-        .insert_resource(Score(0))
-        .insert_resource(Level(1))
+        .insert_resource(GameStats::new())
         .add_systems(Startup, setup)
         .add_systems(Update, (
             spawn_tetromino,
@@ -89,9 +85,6 @@ fn main() {
 
 #[derive(Resource)]
 struct NextPiece(TetrominoType);
-
-#[derive(Resource)]
-struct Score(u32);
 
 fn get_random_piece() -> TetrominoType {
     let shapes = [
@@ -379,17 +372,9 @@ fn tetromino_movement(
 
         // Hard Drop
         if keyboard_input.just_pressed(KeyCode::Space) {
-            let mut dropped = false;
-            loop {
-                let next_y_pivot = tetromino.pivot + IVec3::new(0, -1, 0);
-                if can_place(&tetromino.positions, next_y_pivot, &game_grid) {
-                    tetromino.pivot.y -= 1;
-                    dropped = true;
-                } else {
-                    break;
-                }
-            }
-            if dropped {
+            let new_pivot = calculate_hard_drop(&tetromino, &game_grid);
+            if new_pivot != tetromino.pivot {
+                tetromino.pivot = new_pivot;
                 commands.spawn(AudioPlayer::new(audio.drop_sound.clone()));
             }
             // Lock immediately
@@ -462,26 +447,19 @@ fn render_landed_blocks(
 
 fn check_lines(
     mut game_grid: ResMut<GameGrid>,
-    mut score: ResMut<Score>,
-    mut level: ResMut<Level>,
+    mut stats: ResMut<GameStats>,
     mut config: ResMut<GameConfig>,
     audio: Res<AudioHandles>,
     mut commands: Commands,
 ) {
     let lines_cleared = game_grid.clear_full_lines();
     if lines_cleared > 0 {
-        score.0 += lines_cleared * 100;
-        commands.spawn(AudioPlayer::new(audio.clear_sound.clone()));
-        
-        // Level up every 500 points
-        let new_level = (score.0 / 500) + 1;
-        if new_level > level.0 {
-            level.0 = new_level;
-            // Speed up: 0.8s, 0.7s, 0.6s... min 0.1s
-            let new_speed = (0.8 - (level.0 as f32 - 1.0) * 0.1).max(0.1);
+        if stats.add_lines(lines_cleared) {
+            let new_speed = stats.get_fall_speed();
             config.fall_timer.set_duration(Duration::from_secs_f32(new_speed));
-            println!("Level Up! Level: {}, Speed: {:.1}s", level.0, new_speed);
+            println!("Level Up! Level: {}, Speed: {:.1}s", stats.level, new_speed);
         }
+        commands.spawn(AudioPlayer::new(audio.clear_sound.clone()));
     }
 }
 
@@ -500,21 +478,20 @@ fn pause_input(
 }
 
 fn ui_system(
-    score: Res<Score>,
-    level: Res<Level>,
+    stats: Res<GameStats>,
     next: Res<NextPiece>,
     mut score_query: Query<&mut Text, (With<ScoreText>, Without<NextPieceText>, Without<LevelText>) >,
     mut next_query: Query<&mut Text, (With<NextPieceText>, Without<LevelText>)>,
     mut level_query: Query<&mut Text, With<LevelText>>,
 ) {
     for mut text in &mut score_query {
-        text.0 = format!("Score: {}", score.0);
+        text.0 = format!("Score: {}", stats.score);
     }
     for mut text in &mut next_query {
         text.0 = format!("Next: {:?}", next.0);
     }
     for mut text in &mut level_query {
-        text.0 = format!("Level: {}", level.0);
+        text.0 = format!("Level: {}", stats.level);
     }
 }
 
@@ -537,8 +514,7 @@ fn game_over_input(
     mut next_state: ResMut<NextState<GameState>>,
     mut commands: Commands,
     mut game_grid: ResMut<GameGrid>,
-    mut score: ResMut<Score>,
-    mut level: ResMut<Level>,
+    mut stats: ResMut<GameStats>,
     mut config: ResMut<GameConfig>,
     active_query: Query<Entity, With<ActiveBlock>>,
     landed_query: Query<Entity, With<LandedBlock>>,
@@ -547,8 +523,7 @@ fn game_over_input(
     if keyboard_input.just_pressed(KeyCode::KeyR) {
         // Reset Game
         *game_grid = GameGrid::new();
-        score.0 = 0;
-        level.0 = 1;
+        *stats = GameStats::new();
         config.fall_timer.set_duration(Duration::from_secs_f32(0.8));
         
         // Cleanup entities
