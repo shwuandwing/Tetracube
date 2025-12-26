@@ -400,6 +400,7 @@ fn gravity_system(
     mut commands: Commands,
     mut query: Query<(Entity, &mut Tetromino), With<ActiveBlock>>,
     mut game_grid: ResMut<GameGrid>,
+    mut next_state: ResMut<NextState<GameState>>,
 ) {
     if let Some((entity, mut tetromino)) = query.iter_mut().next() {
         let mut valid = true;
@@ -415,11 +416,20 @@ fn gravity_system(
             tetromino.pivot.y -= 1;
         } else {
             // Lock
+            let mut game_over = false;
             for pos in &tetromino.positions {
                 let global = tetromino.pivot + *pos;
+                // If any block locks above the grid, it's game over
+                if global.y >= GRID_HEIGHT {
+                    game_over = true;
+                }
                 game_grid.set(global.x, global.y, global.z, tetromino.color);
             }
             commands.entity(entity).despawn();
+            
+            if game_over {
+                next_state.set(GameState::GameOver);
+            }
         }
     }
 }
