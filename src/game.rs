@@ -72,9 +72,9 @@ impl GameGrid {
         }
     }
 
-    /// Clears full 2D layers and returns the number of lines cleared.
-    pub fn clear_full_lines(&mut self, dirty: &mut DirtyGrid) -> u32 {
-        let mut lines_cleared = 0;
+    /// Clears full 2D layers and returns the number of layers cleared.
+    pub fn clear_full_layers(&mut self, dirty: &mut DirtyGrid) -> u32 {
+        let mut layers_cleared = 0;
         let mut y = 0;
         while y < GRID_HEIGHT {
             let mut full = true;
@@ -89,7 +89,7 @@ impl GameGrid {
             }
 
             if full {
-                lines_cleared += 1;
+                layers_cleared += 1;
                 dirty.0 = true;
                 // Shift down
                 for dy in y..(GRID_HEIGHT - 1) {
@@ -118,7 +118,7 @@ impl GameGrid {
                 y += 1;
             }
         }
-        lines_cleared
+        layers_cleared
     }
 
     /// Locks a tetromino into the grid. Returns true if it's a Game Over.
@@ -220,9 +220,9 @@ impl GameStats {
         Self { score: 0, level: 1 }
     }
 
-    pub fn add_lines(&mut self, lines: u32) -> bool {
-        if lines == 0 { return false; }
-        self.score += lines * 100;
+    pub fn add_layers(&mut self, layers: u32) -> bool {
+        if layers == 0 { return false; }
+        self.score += layers * 100;
         let new_level = (self.score / 500) + 1;
         if new_level > self.level {
             self.level = new_level;
@@ -374,7 +374,7 @@ mod tests {
     }
 
     #[test]
-    fn test_clear_full_lines() {
+    fn test_clear_full_layers() {
         let mut grid = GameGrid::new();
         let mut dirty = DirtyGrid(false);
         // Fill a layer (y=0)
@@ -386,7 +386,7 @@ mod tests {
         // Put one block at y=1
         grid.set(0, 1, 0, Color::srgb(0.0, 1.0, 0.0));
 
-        let cleared = grid.clear_full_lines(&mut dirty);
+        let cleared = grid.clear_full_layers(&mut dirty);
         assert_eq!(cleared, 1);
         assert!(dirty.0);
         
@@ -397,7 +397,7 @@ mod tests {
     }
 
     #[test]
-    fn test_clear_multiple_lines() {
+    fn test_clear_multiple_layers() {
         let mut grid = GameGrid::new();
         let mut dirty = DirtyGrid(false);
         // Fill two layers (y=0 and y=1)
@@ -411,7 +411,7 @@ mod tests {
         // Put one block at y=2
         grid.set(0, 2, 0, Color::WHITE);
 
-        let cleared = grid.clear_full_lines(&mut dirty);
+        let cleared = grid.clear_full_layers(&mut dirty);
         assert_eq!(cleared, 2);
         
         // Block at y=2 should have dropped to y=0
@@ -484,14 +484,14 @@ mod tests {
         assert_eq!(stats.level, 1);
         assert_eq!(stats.get_fall_speed(), 0.8);
 
-        // Add 5 lines -> 500 points -> Level 2
-        let leveled_up = stats.add_lines(5);
+        // Add 5 layers -> 500 points -> Level 2
+        let leveled_up = stats.add_layers(5);
         assert!(leveled_up);
         assert_eq!(stats.level, 2);
         assert_eq!(stats.get_fall_speed(), 0.7);
 
         // More points...
-        stats.add_lines(10); // 1000 more -> 1500 total -> Level 4
+        stats.add_layers(10); // 1000 more -> 1500 total -> Level 4
         assert_eq!(stats.level, 4);
         assert_eq!(stats.get_fall_speed(), 0.5);
     }

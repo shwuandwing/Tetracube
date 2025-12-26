@@ -72,7 +72,7 @@ fn main() {
             tetromino_movement,
             tetromino_render_active,
             gravity_system, 
-            check_lines,
+            check_layers,
             render_landed_blocks,
             render_boundaries,
             render_next_piece_preview,
@@ -452,7 +452,7 @@ fn render_landed_blocks(
     }
 }
 
-fn check_lines(
+fn check_layers(
     mut game_grid: ResMut<GameGrid>,
     mut dirty: ResMut<DirtyGrid>,
     mut stats: ResMut<GameStats>,
@@ -460,9 +460,9 @@ fn check_lines(
     audio: Res<AudioHandles>,
     mut commands: Commands,
 ) {
-    let lines_cleared = game_grid.clear_full_lines(&mut dirty);
-    if lines_cleared > 0 {
-        if stats.add_lines(lines_cleared) {
+    let layers_cleared = game_grid.clear_full_layers(&mut dirty);
+    if layers_cleared > 0 {
+        if stats.add_layers(layers_cleared) {
             let new_speed = stats.get_fall_speed();
             config.fall_timer.set_duration(Duration::from_secs_f32(new_speed));
             println!("Level Up! Level: {}, Speed: {:.1}s", stats.level, new_speed);
