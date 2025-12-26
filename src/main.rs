@@ -36,6 +36,14 @@ struct ScoreText;
 #[derive(Component)]
 struct NextPieceText;
 
+#[derive(Resource)]
+struct AudioHandles {
+    move_sound: Handle<AudioSource>,
+    rotate_sound: Handle<AudioSource>,
+    drop_sound: Handle<AudioSource>,
+    clear_sound: Handle<AudioSource>,
+}
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
@@ -108,7 +116,16 @@ fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    asset_server: Res<AssetServer>,
 ) {
+    let audio_handles = AudioHandles {
+        move_sound: asset_server.load("sounds/move.ogg"),
+        rotate_sound: asset_server.load("sounds/rotate.ogg"),
+        drop_sound: asset_server.load("sounds/drop.ogg"),
+        clear_sound: asset_server.load("sounds/clear.ogg"),
+    };
+    commands.insert_resource(audio_handles);
+
     let center_x = (GRID_WIDTH as f32 - 1.0) / 2.0;
     let center_z = (GRID_DEPTH as f32 - 1.0) / 2.0;
 
@@ -287,7 +304,7 @@ fn try_rotate_with_kicks(
     axis: IVec3, 
     forward: bool, 
     grid: &GameGrid
-) {
+) -> bool {
     let new_positions: Vec<IVec3> = tetromino.positions.iter()
         .map(|p| rotate_point(*p, axis, forward))
         .collect();
@@ -308,9 +325,10 @@ fn try_rotate_with_kicks(
         if is_valid_rotation(&new_positions, test_pivot, grid) {
             tetromino.positions = new_positions;
             tetromino.pivot = test_pivot;
-            return;
+            return true;
         }
     }
+    false
 }
 
 fn tetromino_movement(
@@ -319,6 +337,8 @@ fn tetromino_movement(
     game_grid: Res<GameGrid>,
     time: Res<Time>,
     mut config: ResMut<GameConfig>,
+    audio: Res<AudioHandles>,
+    mut commands: Commands,
 ) {
     // FIX: Use iter_mut().next() instead of get_single_mut()
     if let Some(mut tetromino) = query.iter_mut().next() {
@@ -351,6 +371,7 @@ fn tetromino_movement(
                 }
                 if valid {
                     tetromino.pivot += move_delta;
+                    commands.spawn(AudioPlayer::new(audio.move_sound.clone()));
                 }
             }
         }
@@ -361,19 +382,26 @@ fn tetromino_movement(
         // Rotation (Immediate, not timer based for responsiveness)
         if keyboard_input.just_pressed(KeyCode::KeyQ) {
             // Rotate Y
-            try_rotate_with_kicks(&mut tetromino, IVec3::Y, forward, &game_grid);
+            if try_rotate_with_kicks(&mut tetromino, IVec3::Y, forward, &game_grid) {
+                commands.spawn(AudioPlayer::new(audio.rotate_sound.clone()));
+            }
         }
         if keyboard_input.just_pressed(KeyCode::KeyE) {
              // Rotate X
-             try_rotate_with_kicks(&mut tetromino, IVec3::X, forward, &game_grid);
+             if try_rotate_with_kicks(&mut tetromino, IVec3::X, forward, &game_grid) {
+                commands.spawn(AudioPlayer::new(audio.rotate_sound.clone()));
+             }
         }
          if keyboard_input.just_pressed(KeyCode::KeyR) {
              // Rotate Z
-             try_rotate_with_kicks(&mut tetromino, IVec3::Z, forward, &game_grid);
+             if try_rotate_with_kicks(&mut tetromino, IVec3::Z, forward, &game_grid) {
+                commands.spawn(AudioPlayer::new(audio.rotate_sound.clone()));
+             }
         }
 
         // Hard Drop
         if keyboard_input.just_pressed(KeyCode::Space) {
+            let mut dropped = false;
             loop {
                 let mut valid = true;
                 for pos in &tetromino.positions {
@@ -385,9 +413,13 @@ fn tetromino_movement(
                 }
                 if valid {
                     tetromino.pivot.y -= 1;
+                    dropped = true;
                 } else {
                     break;
                 }
+            }
+            if dropped {
+                commands.spawn(AudioPlayer::new(audio.drop_sound.clone()));
             }
             // Lock immediately
             config.fall_timer.reset(); 
@@ -481,6 +513,8 @@ fn render_landed_blocks(
 fn check_lines(
     mut game_grid: ResMut<GameGrid>,
     mut score: ResMut<Score>,
+    audio: Res<AudioHandles>,
+    mut commands: Commands,
 ) {
     // Check 2D layers (y)
     let mut y = 0;
@@ -498,6 +532,7 @@ fn check_lines(
 
         if full {
             score.0 += 100;
+            commands.spawn(AudioPlayer::new(audio.clear_sound.clone()));
             // Clear and move down
             // Shift everything above y down by 1
             for dy in y..(GRID_HEIGHT - 1) {
