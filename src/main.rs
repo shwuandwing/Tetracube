@@ -282,23 +282,38 @@ fn rotate_point(point: IVec3, axis: IVec3, forward: bool) -> IVec3 {
 }
 
 fn render_boundaries(mut gizmos: Gizmos) {
-    let width = GRID_WIDTH as f32;
-    let height = GRID_HEIGHT as f32;
-    let depth = GRID_DEPTH as f32;
+    let w = GRID_WIDTH as f32;
+    let h = GRID_HEIGHT as f32;
+    let d = GRID_DEPTH as f32;
     
-    // Center is the average of the min and max coordinates.
-    // Min is -0.5, Max is width - 0.5.
-    // Center = (-0.5 + width - 0.5) / 2 = (width - 1.0) / 2
-    let center_x = (width - 1.0) / 2.0;
-    let center_y = (height - 1.0) / 2.0;
-    let center_z = (depth - 1.0) / 2.0;
+    let grid_color = Color::srgb(0.3, 0.3, 0.3);
+    let border_color = Color::srgb(0.6, 0.6, 0.6);
 
-    gizmos.cuboid(
-        Transform::from_xyz(center_x, center_y, center_z).with_scale(Vec3::new(width, height, depth)),
-        Color::srgb(0.5, 0.5, 0.5),
-    );
+    // Vertical lines at grid intersections on the boundaries
+    for x in 0..=GRID_WIDTH {
+        let x_f = x as f32 - 0.5;
+        // Front and back walls
+        gizmos.line(Vec3::new(x_f, -0.5, -0.5), Vec3::new(x_f, h - 0.5, -0.5), grid_color);
+        gizmos.line(Vec3::new(x_f, -0.5, d - 0.5), Vec3::new(x_f, h - 0.5, d - 0.5), grid_color);
+    }
+    for z in 0..=GRID_DEPTH {
+        let z_f = z as f32 - 0.5;
+        // Left and right walls
+        gizmos.line(Vec3::new(-0.5, -0.5, z_f), Vec3::new(-0.5, h - 0.5, z_f), grid_color);
+        gizmos.line(Vec3::new(w - 0.5, -0.5, z_f), Vec3::new(w - 0.5, h - 0.5, z_f), grid_color);
+    }
+
+    // Horizontal rings at each y level
+    for y in 0..=GRID_HEIGHT {
+        let y_f = y as f32 - 0.5;
+        let color = if y % 5 == 0 { border_color } else { grid_color };
+        
+        gizmos.line(Vec3::new(-0.5, y_f, -0.5), Vec3::new(w - 0.5, y_f, -0.5), color);
+        gizmos.line(Vec3::new(w - 0.5, y_f, -0.5), Vec3::new(w - 0.5, y_f, d - 0.5), color);
+        gizmos.line(Vec3::new(w - 0.5, y_f, d - 0.5), Vec3::new(-0.5, y_f, d - 0.5), color);
+        gizmos.line(Vec3::new(-0.5, y_f, d - 0.5), Vec3::new(-0.5, y_f, -0.5), color);
+    }
 }
-
 fn try_rotate_with_kicks(
     tetromino: &mut Tetromino, 
     axis: IVec3, 
