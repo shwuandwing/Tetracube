@@ -304,38 +304,6 @@ fn render_boundaries(mut gizmos: Gizmos) {
         gizmos.line(Vec3::new(-0.5, y_f, d - 0.5), Vec3::new(-0.5, y_f, -0.5), color);
     }
 }
-fn try_rotate_with_kicks(
-    tetromino: &mut Tetromino, 
-    axis: IVec3, 
-    forward: bool, 
-    grid: &GameGrid
-) -> bool {
-    let new_positions: Vec<IVec3> = tetromino.positions.iter()
-        .map(|p| rotate_point(*p, axis, forward))
-        .collect();
-
-    // Kick offsets to try: (0,0,0) then simple nudges
-    let kicks = [
-        IVec3::ZERO,
-        IVec3::new(0, 1, 0), // Up (Floor kick)
-        IVec3::new(0, 2, 0), // Up 2
-        IVec3::new(1, 0, 0), 
-        IVec3::new(-1, 0, 0),
-        IVec3::new(0, 0, 1),
-        IVec3::new(0, 0, -1),
-    ];
-
-    for kick in kicks {
-        let test_pivot = tetromino.pivot + kick;
-        if is_valid_rotation(&new_positions, test_pivot, grid) {
-            tetromino.positions = new_positions;
-            tetromino.pivot = test_pivot;
-            return true;
-        }
-    }
-    false
-}
-
 fn tetromino_movement(
     mut query: Query<&mut Tetromino, With<ActiveBlock>>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
@@ -511,52 +479,10 @@ fn check_lines(
     audio: Res<AudioHandles>,
     mut commands: Commands,
 ) {
-    // Check 2D layers (y)
-    let mut y = 0;
-    while y < GRID_HEIGHT {
-        let mut full = true;
-        for x in 0..GRID_WIDTH {
-            for z in 0..GRID_DEPTH {
-                if game_grid.get(x, y, z).is_none() {
-                    full = false;
-                    break;
-                }
-            }
-            if !full { break; }
-        }
-
-        if full {
-            score.0 += 100;
-            commands.spawn(AudioPlayer::new(audio.clear_sound.clone()));
-            // Clear and move down
-            // Shift everything above y down by 1
-            for dy in y..(GRID_HEIGHT - 1) {
-                for x in 0..GRID_WIDTH {
-                    for z in 0..GRID_DEPTH {
-                        let above = game_grid.get(x, dy + 1, z);
-                        if let Some(c) = above {
-                             game_grid.set(x, dy, z, c);
-                        } else {
-                             // clear
-                             if let Some(idx) = GameGrid::index(x, dy, z) {
-                                 game_grid.grid[idx] = None;
-                             }
-                        }
-                    }
-                }
-            }
-            // Clear top row
-             for x in 0..GRID_WIDTH {
-                for z in 0..GRID_DEPTH {
-                     if let Some(idx) = GameGrid::index(x, GRID_HEIGHT-1, z) {
-                         game_grid.grid[idx] = None;
-                     }
-                }
-            }
-            // Don't increment y, check this level again
-        } else {
-            y += 1;
-        }
+    let lines_cleared = game_grid.clear_full_lines();
+    if lines_cleared > 0 {
+        score.0 += lines_cleared * 100;
+        commands.spawn(AudioPlayer::new(audio.clear_sound.clone()));
     }
 }
 
