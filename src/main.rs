@@ -62,6 +62,7 @@ fn main() {
             gravity_system.run_if(on_timer(Duration::from_secs_f32(0.8))), 
             check_lines,
             render_landed_blocks,
+            render_boundaries,
             ui_system,
         ).run_if(in_state(GameState::Playing)))
         .add_systems(Update, pause_input)
@@ -90,14 +91,16 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    // Camera
-    commands.spawn(( 
+    // Camera - "Falling Away" view
+    // Grid center is approx (2.5, 7.5, 2.5).
+    // We want to be "above" the top (y=15) and looking down.
+    commands.spawn((
         Camera3d::default(),
-        Transform::from_xyz(10.0, 15.0, 20.0).looking_at(Vec3::new(2.5, 5.0, 2.5), Vec3::Y),
+        Transform::from_xyz(2.5, 22.0, 12.0).looking_at(Vec3::new(2.5, 4.0, 2.5), Vec3::Y),
     ));
 
     // Light
-    commands.spawn(( 
+    commands.spawn((
         PointLight {
             intensity: 2000000.0, // Lumens, high for visibility
             range: 100.0,
@@ -117,7 +120,7 @@ fn setup(
     let grid_color = Color::srgb(0.2, 0.2, 0.2);
     for x in 0..GRID_WIDTH {
         for z in 0..GRID_DEPTH {
-             commands.spawn(( 
+             commands.spawn((
                 Mesh3d(meshes.add(Cuboid::new(0.9, 0.1, 0.9))),
                 MeshMaterial3d(materials.add(StandardMaterial {
                     base_color: grid_color,
@@ -129,7 +132,7 @@ fn setup(
     }
     
     // UI Setup
-    commands.spawn(( 
+    commands.spawn((
         Text::new("Score: 0"),
         Node {
             position_type: PositionType::Absolute,
@@ -140,7 +143,7 @@ fn setup(
         ScoreText,
     ));
     
-    commands.spawn(( 
+    commands.spawn((
         Text::new("Next: "),
         Node {
             position_type: PositionType::Absolute,
@@ -152,8 +155,8 @@ fn setup(
     ));
 
     // Initial instruction
-    commands.spawn(( 
-        Text::new("WASD/Arrows: Move | QE: Rotate | Space: Drop | P: Pause"),
+    commands.spawn((
+        Text::new("WASD/Arrows: Move | Q/E/R: Rotate (+Shift: Reverse) | Space: Drop | P: Pause"),
         Node {
              position_type: PositionType::Absolute,
              bottom: Val::Px(10.0),
@@ -162,7 +165,6 @@ fn setup(
         },
     ));
 }
-
 fn spawn_tetromino(
     mut commands: Commands,
     query: Query<&ActiveBlock>,
@@ -223,15 +225,32 @@ fn tetromino_render_active(
     }
 }
 
-fn rotate_point(point: IVec3, axis: IVec3) -> IVec3 {
+fn rotate_point(point: IVec3, axis: IVec3, forward: bool) -> IVec3 {
     // 90 degree rotation
+    // Forward: +90 deg. Inverse: -90 deg.
     if axis.x == 1 {
-        IVec3::new(point.x, -point.z, point.y)
+        // X Axis: (x, y, z) -> (x, -z, y)
+        if forward { IVec3::new(point.x, -point.z, point.y) }
+        else { IVec3::new(point.x, point.z, -point.y) }
     } else if axis.y == 1 {
-        IVec3::new(point.z, point.y, -point.x)
+        // Y Axis: (x, y, z) -> (z, y, -x)
+        if forward { IVec3::new(point.z, point.y, -point.x) }
+        else { IVec3::new(-point.z, point.y, point.x) }
     } else { // z
-        IVec3::new(-point.y, point.x, point.z)
+        // Z Axis: (x, y, z) -> (-y, x, z)
+        if forward { IVec3::new(-point.y, point.x, point.z) }
+        else { IVec3::new(point.y, -point.x, point.z) }
     }
+}
+
+fn render_boundaries(mut gizmos: Gizmos) {
+    // Draw the bounds of the game grid (0..5, 0..15, 0..5)
+    // Center is (2.5, 7.5, 2.5)
+    // Size is (5.0, 15.0, 5.0)
+    gizmos.cuboid(
+        Transform::from_xyz(2.5, 7.5, 2.5).with_scale(Vec3::new(5.0, 15.0, 5.0)),
+        Color::srgb(0.5, 0.5, 0.5),
+    );
 }
 
 fn tetromino_movement(
@@ -276,24 +295,27 @@ fn tetromino_movement(
             }
         }
         
+        let shift = keyboard_input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]);
+        let forward = !shift;
+
         // Rotation (Immediate, not timer based for responsiveness)
         if keyboard_input.just_pressed(KeyCode::KeyQ) {
             // Rotate Y
-            let new_positions: Vec<IVec3> = tetromino.positions.iter().map(|p| rotate_point(*p, IVec3::Y)).collect();
+            let new_positions: Vec<IVec3> = tetromino.positions.iter().map(|p| rotate_point(*p, IVec3::Y, forward)).collect();
             if is_valid_rotation(&new_positions, tetromino.pivot, &game_grid) {
                 tetromino.positions = new_positions;
             }
         }
         if keyboard_input.just_pressed(KeyCode::KeyE) {
              // Rotate X
-            let new_positions: Vec<IVec3> = tetromino.positions.iter().map(|p| rotate_point(*p, IVec3::X)).collect();
+            let new_positions: Vec<IVec3> = tetromino.positions.iter().map(|p| rotate_point(*p, IVec3::X, forward)).collect();
              if is_valid_rotation(&new_positions, tetromino.pivot, &game_grid) {
                 tetromino.positions = new_positions;
             }
         }
          if keyboard_input.just_pressed(KeyCode::KeyR) {
              // Rotate Z
-            let new_positions: Vec<IVec3> = tetromino.positions.iter().map(|p| rotate_point(*p, IVec3::Z)).collect();
+            let new_positions: Vec<IVec3> = tetromino.positions.iter().map(|p| rotate_point(*p, IVec3::Z, forward)).collect();
              if is_valid_rotation(&new_positions, tetromino.pivot, &game_grid) {
                 tetromino.positions = new_positions;
             }
@@ -316,8 +338,7 @@ fn tetromino_movement(
                     break;
                 }
             }
-            // Lock immediately (timer reset is a hack, logic below handles lock next frame if we don't despawn here)
-            // Ideally we'd call lock logic immediately but I'll let gravity tick handle it or just wait.
+            // Lock immediately
             config.fall_timer.reset(); 
         }
     }
