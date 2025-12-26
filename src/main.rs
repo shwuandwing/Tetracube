@@ -25,7 +25,7 @@ struct ActiveBlock;
 
 // Marker for landed blocks meshes
 #[derive(Component)]
-struct LandedBlock(IVec3);
+struct LandedBlock;
 
 #[derive(Component)]
 struct GameOverText;
@@ -232,7 +232,6 @@ fn spawn_tetromino(
 
     commands.spawn(( 
         Tetromino {
-            shape: piece_type,
             positions: shapes,
             pivot: start_pos,
             color: get_random_color(piece_type),
@@ -517,7 +516,7 @@ fn render_landed_blocks(
                             ..default()
                         })),
                         Transform::from_xyz(x as f32, y as f32, z as f32),
-                        LandedBlock(IVec3::new(x,y,z)),
+                        LandedBlock,
                     ));
                 }
             }

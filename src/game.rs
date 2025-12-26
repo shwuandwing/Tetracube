@@ -11,7 +11,6 @@ pub enum TetrominoType {
 
 #[derive(Component, Clone)]
 pub struct Tetromino {
-    pub shape: TetrominoType,
     pub positions: Vec<IVec3>, // Relative positions to the pivot
     pub pivot: IVec3,          // Global position
     pub color: Color,
