@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use bevy::time::common_conditions::on_timer;
 use std::time::Duration;
 use rand::Rng;
 
@@ -36,6 +35,12 @@ struct ScoreText;
 #[derive(Component)]
 struct NextPieceText;
 
+#[derive(Component)]
+struct LevelText;
+
+#[derive(Resource)]
+struct Level(u32);
+
 #[derive(Resource)]
 struct AudioHandles {
     move_sound: Handle<AudioSource>,
@@ -63,12 +68,13 @@ fn main() {
         })
         .insert_resource(NextPiece(get_random_piece())) // Initialize next piece
         .insert_resource(Score(0))
+        .insert_resource(Level(1))
         .add_systems(Startup, setup)
         .add_systems(Update, (
             spawn_tetromino,
             tetromino_movement,
             tetromino_render_active,
-            gravity_system.run_if(on_timer(Duration::from_secs_f32(0.8))), 
+            gravity_system, 
             check_lines,
             render_landed_blocks,
             render_boundaries,
@@ -197,6 +203,17 @@ fn setup(
             ..default()
         },
         NextPieceText,
+    ));
+
+    commands.spawn((
+        Text::new("Level: 1"),
+        Node {
+            position_type: PositionType::Absolute,
+            top: Val::Px(70.0),
+            left: Val::Px(10.0),
+            ..default()
+        },
+        LevelText,
     ));
 
     // Initial instruction
@@ -386,7 +403,14 @@ fn gravity_system(
     mut query: Query<(Entity, &mut Tetromino), With<ActiveBlock>>,
     mut game_grid: ResMut<GameGrid>,
     mut next_state: ResMut<NextState<GameState>>,
+    time: Res<Time>,
+    mut config: ResMut<GameConfig>,
 ) {
+    config.fall_timer.tick(time.delta());
+    if !config.fall_timer.just_finished() {
+        return;
+    }
+
     if let Some((entity, mut tetromino)) = query.iter_mut().next() {
         let next_y_pivot = tetromino.pivot + IVec3::new(0, -1, 0);
         if can_place(&tetromino.positions, next_y_pivot, &game_grid) {
@@ -439,6 +463,8 @@ fn render_landed_blocks(
 fn check_lines(
     mut game_grid: ResMut<GameGrid>,
     mut score: ResMut<Score>,
+    mut level: ResMut<Level>,
+    mut config: ResMut<GameConfig>,
     audio: Res<AudioHandles>,
     mut commands: Commands,
 ) {
@@ -446,6 +472,16 @@ fn check_lines(
     if lines_cleared > 0 {
         score.0 += lines_cleared * 100;
         commands.spawn(AudioPlayer::new(audio.clear_sound.clone()));
+        
+        // Level up every 500 points
+        let new_level = (score.0 / 500) + 1;
+        if new_level > level.0 {
+            level.0 = new_level;
+            // Speed up: 0.8s, 0.7s, 0.6s... min 0.1s
+            let new_speed = (0.8 - (level.0 as f32 - 1.0) * 0.1).max(0.1);
+            config.fall_timer.set_duration(Duration::from_secs_f32(new_speed));
+            println!("Level Up! Level: {}, Speed: {:.1}s", level.0, new_speed);
+        }
     }
 }
 
@@ -465,15 +501,20 @@ fn pause_input(
 
 fn ui_system(
     score: Res<Score>,
+    level: Res<Level>,
     next: Res<NextPiece>,
-    mut score_query: Query<&mut Text, (With<ScoreText>, Without<NextPieceText>) >,
-    mut next_query: Query<&mut Text, With<NextPieceText>>,
+    mut score_query: Query<&mut Text, (With<ScoreText>, Without<NextPieceText>, Without<LevelText>) >,
+    mut next_query: Query<&mut Text, (With<NextPieceText>, Without<LevelText>)>,
+    mut level_query: Query<&mut Text, With<LevelText>>,
 ) {
     for mut text in &mut score_query {
         text.0 = format!("Score: {}", score.0);
     }
     for mut text in &mut next_query {
         text.0 = format!("Next: {:?}", next.0);
+    }
+    for mut text in &mut level_query {
+        text.0 = format!("Level: {}", level.0);
     }
 }
 
@@ -497,6 +538,8 @@ fn game_over_input(
     mut commands: Commands,
     mut game_grid: ResMut<GameGrid>,
     mut score: ResMut<Score>,
+    mut level: ResMut<Level>,
+    mut config: ResMut<GameConfig>,
     active_query: Query<Entity, With<ActiveBlock>>,
     landed_query: Query<Entity, With<LandedBlock>>,
     text_query: Query<Entity, With<GameOverText>>,
@@ -505,6 +548,8 @@ fn game_over_input(
         // Reset Game
         *game_grid = GameGrid::new();
         score.0 = 0;
+        level.0 = 1;
+        config.fall_timer.set_duration(Duration::from_secs_f32(0.8));
         
         // Cleanup entities
         for entity in &active_query {
