@@ -273,6 +273,37 @@ fn render_boundaries(mut gizmos: Gizmos) {
     );
 }
 
+fn try_rotate_with_kicks(
+    tetromino: &mut Tetromino, 
+    axis: IVec3, 
+    forward: bool, 
+    grid: &GameGrid
+) {
+    let new_positions: Vec<IVec3> = tetromino.positions.iter()
+        .map(|p| rotate_point(*p, axis, forward))
+        .collect();
+
+    // Kick offsets to try: (0,0,0) then simple nudges
+    let kicks = [
+        IVec3::ZERO,
+        IVec3::new(0, 1, 0), // Up (Floor kick)
+        IVec3::new(0, 2, 0), // Up 2
+        IVec3::new(1, 0, 0), 
+        IVec3::new(-1, 0, 0),
+        IVec3::new(0, 0, 1),
+        IVec3::new(0, 0, -1),
+    ];
+
+    for kick in kicks {
+        let test_pivot = tetromino.pivot + kick;
+        if is_valid_rotation(&new_positions, test_pivot, grid) {
+            tetromino.positions = new_positions;
+            tetromino.pivot = test_pivot;
+            return;
+        }
+    }
+}
+
 fn tetromino_movement(
     mut query: Query<&mut Tetromino, With<ActiveBlock>>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
@@ -321,24 +352,15 @@ fn tetromino_movement(
         // Rotation (Immediate, not timer based for responsiveness)
         if keyboard_input.just_pressed(KeyCode::KeyQ) {
             // Rotate Y
-            let new_positions: Vec<IVec3> = tetromino.positions.iter().map(|p| rotate_point(*p, IVec3::Y, forward)).collect();
-            if is_valid_rotation(&new_positions, tetromino.pivot, &game_grid) {
-                tetromino.positions = new_positions;
-            }
+            try_rotate_with_kicks(&mut tetromino, IVec3::Y, forward, &game_grid);
         }
         if keyboard_input.just_pressed(KeyCode::KeyE) {
              // Rotate X
-            let new_positions: Vec<IVec3> = tetromino.positions.iter().map(|p| rotate_point(*p, IVec3::X, forward)).collect();
-             if is_valid_rotation(&new_positions, tetromino.pivot, &game_grid) {
-                tetromino.positions = new_positions;
-            }
+             try_rotate_with_kicks(&mut tetromino, IVec3::X, forward, &game_grid);
         }
          if keyboard_input.just_pressed(KeyCode::KeyR) {
              // Rotate Z
-            let new_positions: Vec<IVec3> = tetromino.positions.iter().map(|p| rotate_point(*p, IVec3::Z, forward)).collect();
-             if is_valid_rotation(&new_positions, tetromino.pivot, &game_grid) {
-                tetromino.positions = new_positions;
-            }
+             try_rotate_with_kicks(&mut tetromino, IVec3::Z, forward, &game_grid);
         }
 
         // Hard Drop
