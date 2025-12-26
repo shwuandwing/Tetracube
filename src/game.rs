@@ -17,6 +17,9 @@ pub struct Tetromino {
     pub color: Color,
 }
 
+#[derive(Resource, Default)]
+pub struct DirtyGrid(pub bool);
+
 #[derive(Resource)]
 pub struct GameGrid {
     // Stores the color of the block at x, y, z. None means empty.
@@ -70,7 +73,7 @@ impl GameGrid {
     }
 
     /// Clears full 2D layers and returns the number of lines cleared.
-    pub fn clear_full_lines(&mut self) -> u32 {
+    pub fn clear_full_lines(&mut self, dirty: &mut DirtyGrid) -> u32 {
         let mut lines_cleared = 0;
         let mut y = 0;
         while y < GRID_HEIGHT {
@@ -87,6 +90,7 @@ impl GameGrid {
 
             if full {
                 lines_cleared += 1;
+                dirty.0 = true;
                 // Shift down
                 for dy in y..(GRID_HEIGHT - 1) {
                     for x in 0..GRID_WIDTH {
@@ -118,8 +122,9 @@ impl GameGrid {
     }
 
     /// Locks a tetromino into the grid. Returns true if it's a Game Over.
-    pub fn lock_tetromino(&mut self, tetromino: &Tetromino) -> bool {
+    pub fn lock_tetromino(&mut self, tetromino: &Tetromino, dirty: &mut DirtyGrid) -> bool {
         let mut game_over = false;
+        dirty.0 = true;
         for pos in &tetromino.positions {
             let global = tetromino.pivot + *pos;
             if global.y >= GRID_HEIGHT {

@@ -59,6 +59,7 @@ fn main() {
         }))
         .init_state::<GameState>()
         .insert_resource(GameGrid::new())
+        .insert_resource(DirtyGrid(true)) // Start dirty to render initial floor
         .insert_resource(GameConfig {
             move_timer: Timer::from_seconds(0.1, TimerMode::Repeating),
             fall_timer: Timer::from_seconds(0.8, TimerMode::Repeating),
@@ -343,7 +344,7 @@ fn tetromino_movement(
             if move_delta != IVec3::ZERO {
                 if can_place(&tetromino.positions, tetromino.pivot + move_delta, &game_grid) {
                     tetromino.pivot += move_delta;
-                    commands.spawn(AudioPlayer::new(audio.move_sound.clone()));
+                    commands.spawn((AudioPlayer::new(audio.move_sound.clone()), PlaybackSettings::DESPAWN));
                 }
             }
         }
@@ -355,19 +356,19 @@ fn tetromino_movement(
         if keyboard_input.just_pressed(KeyCode::KeyQ) {
             // Rotate Y
             if try_rotate_with_kicks(&mut tetromino, IVec3::Y, forward, &game_grid) {
-                commands.spawn(AudioPlayer::new(audio.rotate_sound.clone()));
+                commands.spawn((AudioPlayer::new(audio.rotate_sound.clone()), PlaybackSettings::DESPAWN));
             }
         }
         if keyboard_input.just_pressed(KeyCode::KeyE) {
              // Rotate X
              if try_rotate_with_kicks(&mut tetromino, IVec3::X, forward, &game_grid) {
-                commands.spawn(AudioPlayer::new(audio.rotate_sound.clone()));
+                commands.spawn((AudioPlayer::new(audio.rotate_sound.clone()), PlaybackSettings::DESPAWN));
              }
         }
          if keyboard_input.just_pressed(KeyCode::KeyR) {
              // Rotate Z
              if try_rotate_with_kicks(&mut tetromino, IVec3::Z, forward, &game_grid) {
-                commands.spawn(AudioPlayer::new(audio.rotate_sound.clone()));
+                commands.spawn((AudioPlayer::new(audio.rotate_sound.clone()), PlaybackSettings::DESPAWN));
              }
         }
 
@@ -376,7 +377,7 @@ fn tetromino_movement(
             let new_pivot = calculate_hard_drop(&tetromino, &game_grid);
             if new_pivot != tetromino.pivot {
                 tetromino.pivot = new_pivot;
-                commands.spawn(AudioPlayer::new(audio.drop_sound.clone()));
+                commands.spawn((AudioPlayer::new(audio.drop_sound.clone()), PlaybackSettings::DESPAWN));
             }
             // Lock immediately
             config.fall_timer.reset(); 
@@ -388,6 +389,7 @@ fn gravity_system(
     mut commands: Commands,
     mut query: Query<(Entity, &mut Tetromino), With<ActiveBlock>>,
     mut game_grid: ResMut<GameGrid>,
+    mut dirty: ResMut<DirtyGrid>,
     mut next_state: ResMut<NextState<GameState>>,
     time: Res<Time>,
     mut config: ResMut<GameConfig>,
@@ -403,7 +405,7 @@ fn gravity_system(
             tetromino.pivot.y -= 1;
         } else {
             // Lock
-            if game_grid.lock_tetromino(&tetromino) {
+            if game_grid.lock_tetromino(&tetromino, &mut dirty) {
                 next_state.set(GameState::GameOver);
             }
             commands.entity(entity).despawn();
@@ -414,10 +416,14 @@ fn gravity_system(
 fn render_landed_blocks(
     mut commands: Commands,
     game_grid: Res<GameGrid>,
+    mut dirty: ResMut<DirtyGrid>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     query: Query<Entity, With<LandedBlock>>, 
 ) {
+    if !dirty.0 { return; }
+    dirty.0 = false;
+
     // Despawn all landed blocks to redraw
     for entity in &query {
         commands.entity(entity).despawn();
@@ -448,19 +454,20 @@ fn render_landed_blocks(
 
 fn check_lines(
     mut game_grid: ResMut<GameGrid>,
+    mut dirty: ResMut<DirtyGrid>,
     mut stats: ResMut<GameStats>,
     mut config: ResMut<GameConfig>,
     audio: Res<AudioHandles>,
     mut commands: Commands,
 ) {
-    let lines_cleared = game_grid.clear_full_lines();
+    let lines_cleared = game_grid.clear_full_lines(&mut dirty);
     if lines_cleared > 0 {
         if stats.add_lines(lines_cleared) {
             let new_speed = stats.get_fall_speed();
             config.fall_timer.set_duration(Duration::from_secs_f32(new_speed));
             println!("Level Up! Level: {}, Speed: {:.1}s", stats.level, new_speed);
         }
-        commands.spawn(AudioPlayer::new(audio.clear_sound.clone()));
+        commands.spawn((AudioPlayer::new(audio.clear_sound.clone()), PlaybackSettings::DESPAWN));
     }
 }
 
@@ -515,6 +522,7 @@ fn game_over_input(
     mut next_state: ResMut<NextState<GameState>>,
     mut commands: Commands,
     mut game_grid: ResMut<GameGrid>,
+    mut dirty: ResMut<DirtyGrid>,
     mut stats: ResMut<GameStats>,
     mut config: ResMut<GameConfig>,
     active_query: Query<Entity, With<ActiveBlock>>,
@@ -525,6 +533,7 @@ fn game_over_input(
         // Reset Game
         *game_grid = GameGrid::new();
         *stats = GameStats::new();
+        dirty.0 = true;
         config.fall_timer.set_duration(Duration::from_secs_f32(0.8));
         
         // Cleanup entities
