@@ -99,7 +99,7 @@ fn render_next_piece_preview(
     mut gizmos: Gizmos,
     next_piece: Res<NextPiece>,
 ) {
-    let preview_pivot = Vec3::new(GRID_WIDTH as f32 + 2.0, 10.0, (GRID_DEPTH as f32 - 1.0) / 2.0);
+    let preview_pivot = Vec3::new(GRID_WIDTH as f32 + 4.0, 0.0, (GRID_DEPTH as f32 - 1.0) / 2.0);
     let shapes = get_shape_blocks(next_piece.0);
     let color = get_random_color(next_piece.0);
 
