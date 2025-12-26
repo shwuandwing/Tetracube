@@ -91,7 +91,7 @@ fn render_next_piece_preview(
     mut gizmos: Gizmos,
     next_piece: Res<NextPiece>,
 ) {
-    let preview_pivot = Vec3::new(8.0, 10.0, 2.5);
+    let preview_pivot = Vec3::new(GRID_WIDTH as f32 + 2.0, 10.0, (GRID_DEPTH as f32 - 1.0) / 2.0);
     let shapes = get_shape_blocks(next_piece.0);
     let color = get_random_color(next_piece.0);
 
@@ -109,12 +109,13 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+    let center_x = (GRID_WIDTH as f32 - 1.0) / 2.0;
+    let center_z = (GRID_DEPTH as f32 - 1.0) / 2.0;
+
     // Camera - "Falling Away" view
-    // Grid center is approx (2.5, 7.5, 2.5).
-    // We want to be "above" the top (y=15) and looking down.
     commands.spawn((
         Camera3d::default(),
-        Transform::from_xyz(2.5, 22.0, 12.0).looking_at(Vec3::new(2.5, 4.0, 2.5), Vec3::Y),
+        Transform::from_xyz(center_x, 22.0, center_z + 10.0).looking_at(Vec3::new(center_x, 4.0, center_z), Vec3::Y),
     ));
 
     // Light
@@ -264,11 +265,19 @@ fn rotate_point(point: IVec3, axis: IVec3, forward: bool) -> IVec3 {
 }
 
 fn render_boundaries(mut gizmos: Gizmos) {
-    // Draw the bounds of the game grid (0..5, 0..15, 0..5)
-    // Center is (2.5, 7.5, 2.5)
-    // Size is (5.0, 15.0, 5.0)
+    let width = GRID_WIDTH as f32;
+    let height = GRID_HEIGHT as f32;
+    let depth = GRID_DEPTH as f32;
+    
+    // Center is the average of the min and max coordinates.
+    // Min is -0.5, Max is width - 0.5.
+    // Center = (-0.5 + width - 0.5) / 2 = (width - 1.0) / 2
+    let center_x = (width - 1.0) / 2.0;
+    let center_y = (height - 1.0) / 2.0;
+    let center_z = (depth - 1.0) / 2.0;
+
     gizmos.cuboid(
-        Transform::from_xyz(2.5, 7.5, 2.5).with_scale(Vec3::new(5.0, 15.0, 5.0)),
+        Transform::from_xyz(center_x, center_y, center_z).with_scale(Vec3::new(width, height, depth)),
         Color::srgb(0.5, 0.5, 0.5),
     );
 }

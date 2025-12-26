@@ -38,10 +38,16 @@ impl GameGrid {
     }
 
     pub fn is_occupied(&self, x: i32, y: i32, z: i32) -> bool {
+        if x < 0 || x >= GRID_WIDTH || z < 0 || z >= GRID_DEPTH || y < 0 {
+            return true;
+        }
+        if y >= GRID_HEIGHT {
+            return false;
+        }
         if let Some(idx) = Self::index(x, y, z) {
             self.grid[idx].is_some()
         } else {
-            true // Out of bounds is considered "occupied" for collision purposes (except top)
+            true
         }
     }
     
