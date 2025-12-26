@@ -6,7 +6,7 @@ pub const GRID_DEPTH: i32 = 8;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum TetrominoType {
-    I, O, T, S, Z, J, L,
+    I, O, T, Z, L,
     Tripod, ScrewL, ScrewR,
 }
 
@@ -237,9 +237,7 @@ pub fn get_shape_blocks(piece_type: TetrominoType) -> Vec<IVec3> {
         TetrominoType::I => vec![IVec3::new(0,0,0), IVec3::new(-1,0,0), IVec3::new(1,0,0), IVec3::new(2,0,0)],
         TetrominoType::O => vec![IVec3::new(0,0,0), IVec3::new(1,0,0), IVec3::new(0,0,1), IVec3::new(1,0,1)],
         TetrominoType::T => vec![IVec3::new(0,0,0), IVec3::new(-1,0,0), IVec3::new(1,0,0), IVec3::new(0,0,1)],
-        TetrominoType::S => vec![IVec3::new(0,0,0), IVec3::new(-1,0,0), IVec3::new(0,0,1), IVec3::new(1,0,1)],
         TetrominoType::Z => vec![IVec3::new(0,0,0), IVec3::new(1,0,0), IVec3::new(0,0,1), IVec3::new(-1,0,1)],
-        TetrominoType::J => vec![IVec3::new(0,0,0), IVec3::new(-1,0,0), IVec3::new(1,0,0), IVec3::new(-1,0,1)],
         TetrominoType::L => vec![IVec3::new(0,0,0), IVec3::new(-1,0,0), IVec3::new(1,0,0), IVec3::new(1,0,1)],
         TetrominoType::Tripod => vec![IVec3::new(0,0,0), IVec3::new(1,0,0), IVec3::new(0,1,0), IVec3::new(0,0,1)],
         TetrominoType::ScrewL => vec![IVec3::new(0,0,0), IVec3::new(1,0,0), IVec3::new(1,1,0), IVec3::new(1,1,1)],
@@ -252,9 +250,7 @@ pub fn get_random_color(piece_type: TetrominoType) -> Color {
         TetrominoType::I => Color::srgb(0.0, 1.0, 1.0), // Cyan
         TetrominoType::O => Color::srgb(1.0, 1.0, 0.0), // Yellow
         TetrominoType::T => Color::srgb(1.0, 0.0, 1.0), // Magenta
-        TetrominoType::S => Color::srgb(0.0, 1.0, 0.0), // Green
         TetrominoType::Z => Color::srgb(1.0, 0.0, 0.0), // Red
-        TetrominoType::J => Color::srgb(0.0, 0.0, 1.0), // Blue
         TetrominoType::L => Color::srgb(1.0, 0.5, 0.0), // Orange
         TetrominoType::Tripod => Color::srgb(1.0, 1.0, 1.0), // White
         TetrominoType::ScrewL => Color::srgb(0.5, 1.0, 0.0), // Lime
