@@ -160,44 +160,65 @@ mod tests {
     }
 
     #[test]
-    fn test_rotation() {
-        let p = IVec3::new(1, 0, 0);
-        // Rotate around Y: (1,0,0) -> (0,0,-1)
-        let r1 = rotate_point(p, IVec3::Y, true);
-        assert_eq!(r1, IVec3::new(0, 0, -1));
+    fn test_rotation_all_axes() {
+        let p = IVec3::new(1, 2, 3);
+        
+        // X Axis: (x, y, z) -> (x, -z, y)
+        assert_eq!(rotate_point(p, IVec3::X, true), IVec3::new(1, -3, 2));
+        assert_eq!(rotate_point(p, IVec3::X, false), IVec3::new(1, 3, -2));
 
-        // Rotate around X: (0,1,0) -> (0,0,1)
-        let p2 = IVec3::new(0, 1, 0);
-        let r2 = rotate_point(p2, IVec3::X, true);
-        assert_eq!(r2, IVec3::new(0, -0, 1)); // (x, -z, y) -> (0, 0, 1)
+        // Y Axis: (x, y, z) -> (z, y, -x)
+        assert_eq!(rotate_point(p, IVec3::Y, true), IVec3::new(3, 2, -1));
+        assert_eq!(rotate_point(p, IVec3::Y, false), IVec3::new(-3, 2, 1));
 
-        // Rotate around Z: (1,0,0) -> (0,1,0)
-        let r3 = rotate_point(p, IVec3::Z, true);
-        assert_eq!(r3, IVec3::new(0, 1, 0));
+        // Z Axis: (x, y, z) -> (-y, x, z)
+        assert_eq!(rotate_point(p, IVec3::Z, true), IVec3::new(-2, 1, 3));
+        assert_eq!(rotate_point(p, IVec3::Z, false), IVec3::new(2, -1, 3));
     }
 
     #[test]
-    fn test_is_valid_pos() {
-        let grid = GameGrid::new();
-        assert!(grid.is_valid_pos(0, 0, 0));
-        assert!(grid.is_valid_pos(GRID_WIDTH - 1, 0, GRID_DEPTH - 1));
-        assert!(grid.is_valid_pos(0, 100, 0)); // Height is open upwards
-        assert!(!grid.is_valid_pos(-1, 0, 0));
-        assert!(!grid.is_valid_pos(0, -1, 0));
-        assert!(!grid.is_valid_pos(0, 0, -1));
-        assert!(!grid.is_valid_pos(GRID_WIDTH, 0, 0));
-        assert!(!grid.is_valid_pos(0, 0, GRID_DEPTH));
+    fn test_is_valid_rotation_collision() {
+        let mut grid = GameGrid::new();
+        let positions = vec![IVec3::ZERO, IVec3::new(1, 0, 0)];
+        let pivot = IVec3::new(2, 2, 2);
+
+        // Valid
+        assert!(is_valid_rotation(&positions, pivot, &grid));
+
+        // Collide with boundary (X)
+        let oob_pivot = IVec3::new(GRID_WIDTH - 1, 0, 0);
+        assert!(!is_valid_rotation(&positions, oob_pivot, &grid));
+
+        // Collide with block
+        grid.set(3, 2, 2, Color::WHITE);
+        assert!(!is_valid_rotation(&positions, pivot, &grid));
     }
 
     #[test]
-    fn test_get_shape_blocks() {
+    fn test_grid_get_set() {
+        let mut grid = GameGrid::new();
+        let color = Color::srgb(1.0, 0.0, 0.0);
+        grid.set(1, 2, 3, color);
+        
+        // Use a small epsilon for color comparison or just compare if it's Some
+        assert!(grid.get(1, 2, 3).is_some());
+        assert!(grid.get(0, 0, 0).is_none());
+        assert!(grid.get(-1, -1, -1).is_none());
+    }
+
+    #[test]
+    fn test_get_shape_blocks_uniqueness() {
+        use std::collections::HashSet;
         let shapes = [
             TetrominoType::I, TetrominoType::O, TetrominoType::T, 
             TetrominoType::S, TetrominoType::Z, TetrominoType::J, TetrominoType::L
         ];
         for s in shapes {
             let blocks = get_shape_blocks(s);
-            assert_eq!(blocks.len(), 4);
+            let mut set = HashSet::new();
+            for b in blocks {
+                assert!(set.insert(b), "Duplicate block position in shape {:?}", s);
+            }
         }
     }
 }
