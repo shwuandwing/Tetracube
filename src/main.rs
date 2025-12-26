@@ -230,13 +230,9 @@ fn spawn_tetromino(
     let shapes = get_shape_blocks(piece_type);
     
     // Check game over
-    for block in &shapes {
-        let check_pos = start_pos + *block;
-        // If spawn position is occupied (checking below the spawn point mainly)
-        if game_grid.is_occupied(check_pos.x, check_pos.y, check_pos.z) && check_pos.y < GRID_HEIGHT {
-             next_piece_state.set(GameState::GameOver);
-             return;
-        }
+    if !can_place(&shapes, start_pos, &game_grid) {
+         next_piece_state.set(GameState::GameOver);
+         return;
     }
 
     commands.spawn(( 
@@ -334,15 +330,7 @@ fn tetromino_movement(
 
             // Movement
             if move_delta != IVec3::ZERO {
-                let mut valid = true;
-                for pos in &tetromino.positions {
-                    let new_pos = tetromino.pivot + *pos + move_delta;
-                    if !game_grid.is_valid_pos(new_pos.x, new_pos.y, new_pos.z) || game_grid.is_occupied(new_pos.x, new_pos.y, new_pos.z) {
-                        valid = false;
-                        break;
-                    }
-                }
-                if valid {
+                if can_place(&tetromino.positions, tetromino.pivot + move_delta, &game_grid) {
                     tetromino.pivot += move_delta;
                     commands.spawn(AudioPlayer::new(audio.move_sound.clone()));
                 }
@@ -376,15 +364,8 @@ fn tetromino_movement(
         if keyboard_input.just_pressed(KeyCode::Space) {
             let mut dropped = false;
             loop {
-                let mut valid = true;
-                for pos in &tetromino.positions {
-                    let new_pos = tetromino.pivot + *pos + IVec3::new(0, -1, 0);
-                    if new_pos.y < 0 || game_grid.is_occupied(new_pos.x, new_pos.y, new_pos.z) {
-                        valid = false;
-                        break;
-                    }
-                }
-                if valid {
+                let next_y_pivot = tetromino.pivot + IVec3::new(0, -1, 0);
+                if can_place(&tetromino.positions, next_y_pivot, &game_grid) {
                     tetromino.pivot.y -= 1;
                     dropped = true;
                 } else {
@@ -407,33 +388,15 @@ fn gravity_system(
     mut next_state: ResMut<NextState<GameState>>,
 ) {
     if let Some((entity, mut tetromino)) = query.iter_mut().next() {
-        let mut valid = true;
-        for pos in &tetromino.positions {
-            let new_pos = tetromino.pivot + *pos + IVec3::new(0, -1, 0);
-            if new_pos.y < 0 || game_grid.is_occupied(new_pos.x, new_pos.y, new_pos.z) {
-                valid = false;
-                break;
-            }
-        }
-
-        if valid {
+        let next_y_pivot = tetromino.pivot + IVec3::new(0, -1, 0);
+        if can_place(&tetromino.positions, next_y_pivot, &game_grid) {
             tetromino.pivot.y -= 1;
         } else {
             // Lock
-            let mut game_over = false;
-            for pos in &tetromino.positions {
-                let global = tetromino.pivot + *pos;
-                // If any block locks above the grid, it's game over
-                if global.y >= GRID_HEIGHT {
-                    game_over = true;
-                }
-                game_grid.set(global.x, global.y, global.z, tetromino.color);
-            }
-            commands.entity(entity).despawn();
-            
-            if game_over {
+            if game_grid.lock_tetromino(&tetromino) {
                 next_state.set(GameState::GameOver);
             }
+            commands.entity(entity).despawn();
         }
     }
 }

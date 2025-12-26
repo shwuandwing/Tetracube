@@ -115,6 +115,19 @@ impl GameGrid {
         }
         lines_cleared
     }
+
+    /// Locks a tetromino into the grid. Returns true if it's a Game Over.
+    pub fn lock_tetromino(&mut self, tetromino: &Tetromino) -> bool {
+        let mut game_over = false;
+        for pos in &tetromino.positions {
+            let global = tetromino.pivot + *pos;
+            if global.y >= GRID_HEIGHT {
+                game_over = true;
+            }
+            self.set(global.x, global.y, global.z, tetromino.color);
+        }
+        game_over
+    }
 }
 
 pub fn try_rotate_with_kicks(
@@ -140,7 +153,7 @@ pub fn try_rotate_with_kicks(
 
     for kick in kicks {
         let test_pivot = tetromino.pivot + kick;
-        if is_valid_rotation(&new_positions, test_pivot, grid) {
+        if can_place(&new_positions, test_pivot, grid) {
             tetromino.positions = new_positions;
             tetromino.pivot = test_pivot;
             return true;
@@ -167,7 +180,7 @@ pub fn rotate_point(point: IVec3, axis: IVec3, forward: bool) -> IVec3 {
     }
 }
 
-pub fn is_valid_rotation(positions: &Vec<IVec3>, pivot: IVec3, grid: &GameGrid) -> bool {
+pub fn can_place(positions: &[IVec3], pivot: IVec3, grid: &GameGrid) -> bool {
     for pos in positions {
         let global = pivot + *pos;
         if !grid.is_valid_pos(global.x, global.y, global.z) || grid.is_occupied(global.x, global.y, global.z) {
@@ -257,21 +270,45 @@ mod tests {
     }
 
     #[test]
-    fn test_is_valid_rotation_collision() {
+    fn test_can_place_collision() {
         let mut grid = GameGrid::new();
         let positions = vec![IVec3::ZERO, IVec3::new(1, 0, 0)];
         let pivot = IVec3::new(2, 2, 2);
 
         // Valid
-        assert!(is_valid_rotation(&positions, pivot, &grid));
+        assert!(can_place(&positions, pivot, &grid));
 
         // Collide with boundary (X)
         let oob_pivot = IVec3::new(GRID_WIDTH - 1, 0, 0);
-        assert!(!is_valid_rotation(&positions, oob_pivot, &grid));
+        assert!(!can_place(&positions, oob_pivot, &grid));
 
         // Collide with block
         grid.set(3, 2, 2, Color::WHITE);
-        assert!(!is_valid_rotation(&positions, pivot, &grid));
+        assert!(!can_place(&positions, pivot, &grid));
+    }
+
+    #[test]
+    fn test_lock_tetromino() {
+        let mut grid = GameGrid::new();
+        let tetromino = Tetromino {
+            positions: vec![IVec3::ZERO],
+            pivot: IVec3::new(0, 0, 0),
+            color: Color::WHITE,
+        };
+        
+        // Not game over
+        let game_over = grid.lock_tetromino(&tetromino);
+        assert!(!game_over);
+        assert!(grid.get(0, 0, 0).is_some());
+
+        // Game over (locks at or above GRID_HEIGHT)
+        let tetromino_high = Tetromino {
+            positions: vec![IVec3::ZERO],
+            pivot: IVec3::new(0, GRID_HEIGHT, 0),
+            color: Color::WHITE,
+        };
+        let game_over_high = grid.lock_tetromino(&tetromino_high);
+        assert!(game_over_high);
     }
 
     #[test]
