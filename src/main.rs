@@ -42,6 +42,7 @@ struct AudioHandles {
     rotate_sound: Handle<AudioSource>,
     drop_sound: Handle<AudioSource>,
     clear_sound: Handle<AudioSource>,
+    bgm: Handle<AudioSource>,
 }
 
 fn main() {
@@ -123,7 +124,15 @@ fn setup(
         rotate_sound: asset_server.load("sounds/rotate.ogg"),
         drop_sound: asset_server.load("sounds/drop.ogg"),
         clear_sound: asset_server.load("sounds/clear.ogg"),
+        bgm: asset_server.load("sounds/bgm.ogg"),
     };
+    
+    // Start background music
+    commands.spawn((
+        AudioPlayer::new(audio_handles.bgm.clone()),
+        PlaybackSettings::LOOP,
+    ));
+
     commands.insert_resource(audio_handles);
 
     let center_x = (GRID_WIDTH as f32 - 1.0) / 2.0;
