@@ -89,7 +89,8 @@ struct NextPiece(TetrominoType);
 fn get_random_piece() -> TetrominoType {
     let shapes = [
         TetrominoType::I, TetrominoType::O, TetrominoType::T, 
-        TetrominoType::S, TetrominoType::Z, TetrominoType::J, TetrominoType::L
+        TetrominoType::S, TetrominoType::Z, TetrominoType::J, TetrominoType::L,
+        TetrominoType::Tripod, TetrominoType::ScrewL, TetrominoType::ScrewR,
     ];
     let mut rng = rand::rng(); 
     shapes[rng.random_range(0..shapes.len())]

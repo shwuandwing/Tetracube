@@ -6,7 +6,8 @@ pub const GRID_DEPTH: i32 = 8;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum TetrominoType {
-    I, O, T, S, Z, J, L
+    I, O, T, S, Z, J, L,
+    Tripod, ScrewL, ScrewR,
 }
 
 #[derive(Component, Clone)]
@@ -240,6 +241,9 @@ pub fn get_shape_blocks(piece_type: TetrominoType) -> Vec<IVec3> {
         TetrominoType::Z => vec![IVec3::new(0,0,0), IVec3::new(1,0,0), IVec3::new(0,0,1), IVec3::new(-1,0,1)],
         TetrominoType::J => vec![IVec3::new(0,0,0), IVec3::new(-1,0,0), IVec3::new(1,0,0), IVec3::new(-1,0,1)],
         TetrominoType::L => vec![IVec3::new(0,0,0), IVec3::new(-1,0,0), IVec3::new(1,0,0), IVec3::new(1,0,1)],
+        TetrominoType::Tripod => vec![IVec3::new(0,0,0), IVec3::new(1,0,0), IVec3::new(0,1,0), IVec3::new(0,0,1)],
+        TetrominoType::ScrewL => vec![IVec3::new(0,0,0), IVec3::new(1,0,0), IVec3::new(1,1,0), IVec3::new(1,1,1)],
+        TetrominoType::ScrewR => vec![IVec3::new(0,0,0), IVec3::new(1,0,0), IVec3::new(1,1,0), IVec3::new(1,1,-1)],
     }
 }
 
@@ -252,6 +256,9 @@ pub fn get_random_color(piece_type: TetrominoType) -> Color {
         TetrominoType::Z => Color::srgb(1.0, 0.0, 0.0), // Red
         TetrominoType::J => Color::srgb(0.0, 0.0, 1.0), // Blue
         TetrominoType::L => Color::srgb(1.0, 0.5, 0.0), // Orange
+        TetrominoType::Tripod => Color::srgb(1.0, 1.0, 1.0), // White
+        TetrominoType::ScrewL => Color::srgb(0.5, 1.0, 0.0), // Lime
+        TetrominoType::ScrewR => Color::srgb(0.5, 0.0, 1.0), // Purple
     }
 }
 
