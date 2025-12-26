@@ -467,4 +467,17 @@ mod tests {
         assert_eq!(stats.level, 4);
         assert_eq!(stats.get_fall_speed(), 0.5);
     }
+
+    #[test]
+    fn test_new_3d_tetromino_shapes() {
+        let types = [TetrominoType::Tripod, TetrominoType::ScrewL, TetrominoType::ScrewR];
+        for t in types {
+            let shapes = get_shape_blocks(t);
+            assert_eq!(shapes.len(), 4, "Tetromino {:?} must have 4 blocks", t);
+            
+            let color = get_random_color(t);
+            // Just verify it doesn't panic and returns something
+            assert!(color.to_linear().to_vec4().length() > 0.0);
+        }
+    }
 }
