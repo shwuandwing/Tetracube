@@ -137,10 +137,10 @@ fn setup(
     let center_x = (GRID_WIDTH as f32 - 1.0) / 2.0;
     let center_z = (GRID_DEPTH as f32 - 1.0) / 2.0;
 
-    // Camera - "Falling Away" view
+    // Camera
     commands.spawn((
         Camera3d::default(),
-        Transform::from_xyz(center_x, 22.0, center_z + 10.0).looking_at(Vec3::new(center_x, 4.0, center_z), Vec3::Y),
+        Transform::from_xyz(center_x, 25.0, center_z).looking_at(Vec3::new(center_x, 0.0, center_z), Vec3::NEG_Z),
     ));
 
     // Light
