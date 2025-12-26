@@ -119,7 +119,16 @@ mod tests {
         grid.set(0, 0, 0, Color::WHITE);
         assert!(grid.is_occupied(0, 0, 0));
         
-        // Out of bounds is occupied
+        // Out of bounds (negative or horizontal) is occupied
         assert!(grid.is_occupied(-1, 5, 2));
+        assert!(grid.is_occupied(GRID_WIDTH, 5, 2));
+        assert!(grid.is_occupied(0, -1, 0));
+        
+        // Above grid is NOT occupied (to allow spawning/rotating)
+        assert!(!grid.is_occupied(0, GRID_HEIGHT, 0));
+        assert!(!grid.is_occupied(GRID_WIDTH - 1, GRID_HEIGHT + 5, GRID_DEPTH - 1));
+        
+        // Horizontal OOB still applies even if above grid height
+        assert!(grid.is_occupied(-1, GRID_HEIGHT, 0));
     }
 }
