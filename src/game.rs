@@ -338,6 +338,7 @@ mod tests {
     #[test]
     fn test_lock_tetromino() {
         let mut grid = GameGrid::new();
+        let mut dirty = DirtyGrid(false);
         let tetromino = Tetromino {
             positions: vec![IVec3::ZERO],
             pivot: IVec3::new(0, 0, 0),
@@ -345,9 +346,10 @@ mod tests {
         };
         
         // Not game over
-        let game_over = grid.lock_tetromino(&tetromino);
+        let game_over = grid.lock_tetromino(&tetromino, &mut dirty);
         assert!(!game_over);
         assert!(grid.get(0, 0, 0).is_some());
+        assert!(dirty.0);
 
         // Game over (locks at or above GRID_HEIGHT)
         let tetromino_high = Tetromino {
@@ -355,7 +357,7 @@ mod tests {
             pivot: IVec3::new(0, GRID_HEIGHT, 0),
             color: Color::WHITE,
         };
-        let game_over_high = grid.lock_tetromino(&tetromino_high);
+        let game_over_high = grid.lock_tetromino(&tetromino_high, &mut dirty);
         assert!(game_over_high);
     }
 
@@ -374,6 +376,7 @@ mod tests {
     #[test]
     fn test_clear_full_lines() {
         let mut grid = GameGrid::new();
+        let mut dirty = DirtyGrid(false);
         // Fill a layer (y=0)
         for x in 0..GRID_WIDTH {
             for z in 0..GRID_DEPTH {
@@ -383,13 +386,37 @@ mod tests {
         // Put one block at y=1
         grid.set(0, 1, 0, Color::srgb(0.0, 1.0, 0.0));
 
-        let cleared = grid.clear_full_lines();
+        let cleared = grid.clear_full_lines(&mut dirty);
         assert_eq!(cleared, 1);
+        assert!(dirty.0);
         
         // Block at y=1 should have dropped to y=0
         assert!(grid.get(0, 0, 0).is_some());
         // Layer y=1 should now be empty except for what dropped (or if it was already empty)
         assert!(grid.get(1, 1, 1).is_none());
+    }
+
+    #[test]
+    fn test_clear_multiple_lines() {
+        let mut grid = GameGrid::new();
+        let mut dirty = DirtyGrid(false);
+        // Fill two layers (y=0 and y=1)
+        for y in 0..2 {
+            for x in 0..GRID_WIDTH {
+                for z in 0..GRID_DEPTH {
+                    grid.set(x, y, z, Color::WHITE);
+                }
+            }
+        }
+        // Put one block at y=2
+        grid.set(0, 2, 0, Color::WHITE);
+
+        let cleared = grid.clear_full_lines(&mut dirty);
+        assert_eq!(cleared, 2);
+        
+        // Block at y=2 should have dropped to y=0
+        assert!(grid.get(0, 0, 0).is_some());
+        assert!(grid.get(0, 1, 0).is_none());
     }
 
     #[test]
@@ -480,5 +507,50 @@ mod tests {
             // Just verify it doesn't panic and returns something
             assert!(color.to_linear().to_vec4().length() > 0.0);
         }
+    }
+
+    #[test]
+    fn test_lock_tetromino_out_of_bounds() {
+        let mut grid = GameGrid::new();
+        let mut dirty = DirtyGrid(false);
+        let tetromino = Tetromino {
+            positions: vec![IVec3::ZERO],
+            pivot: IVec3::new(-1, 0, 0), // OOB X
+            color: Color::WHITE,
+        };
+        // Should not panic and should not set anything in grid (index returns None)
+        grid.lock_tetromino(&tetromino, &mut dirty);
+        assert!(dirty.0);
+    }
+
+    #[test]
+    fn test_try_rotate_with_kicks_wall() {
+        let grid = GameGrid::new();
+        
+        // Let's use I-like piece at the edge.
+        // Rotation around Y (forward): (z, y, -x)
+        // (1,0,0) -> (0,0,-1)
+        // (2,0,0) -> (0,0,-2)
+        // This won't hit the wall.
+        
+        // Rotation around Z (forward): (-y, x, z)
+        // (1,0,0) -> (0,1,0)
+        // (2,0,0) -> (0,2,0)
+        // This won't hit the wall.
+        
+        // Let's use a piece that MUST kick.
+        let mut tetromino = Tetromino {
+            positions: vec![IVec3::ZERO, IVec3::new(0, 1, 0)],
+            pivot: IVec3::new(GRID_WIDTH - 1, 0, 0),
+            color: Color::WHITE,
+        };
+        // Rotate Z (forward): (-y, x, z)
+        // (0,1,0) -> (-1,0,0) relative to (7,0,0) -> (6,0,0). Valid.
+        
+        // Let's put it at X=0 and rotate it to X=-1.
+        tetromino.pivot = IVec3::new(0, 0, 0);
+        // Rotate Z (forward): (0,1,0) -> (-1,0,0). OOB!
+        // It should kick to (1,0,0) or similar.
+        assert!(try_rotate_with_kicks(&mut tetromino, IVec3::Z, true, &grid));
     }
 }
