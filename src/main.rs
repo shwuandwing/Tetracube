@@ -262,24 +262,6 @@ fn tetromino_render_active(
     }
 }
 
-fn rotate_point(point: IVec3, axis: IVec3, forward: bool) -> IVec3 {
-    // 90 degree rotation
-    // Forward: +90 deg. Inverse: -90 deg.
-    if axis.x == 1 {
-        // X Axis: (x, y, z) -> (x, -z, y)
-        if forward { IVec3::new(point.x, -point.z, point.y) }
-        else { IVec3::new(point.x, point.z, -point.y) }
-    } else if axis.y == 1 {
-        // Y Axis: (x, y, z) -> (z, y, -x)
-        if forward { IVec3::new(point.z, point.y, -point.x) }
-        else { IVec3::new(-point.z, point.y, point.x) }
-    } else { // z
-        // Z Axis: (x, y, z) -> (-y, x, z)
-        if forward { IVec3::new(-point.y, point.x, point.z) }
-        else { IVec3::new(point.y, -point.x, point.z) }
-    }
-}
-
 fn render_boundaries(mut gizmos: Gizmos) {
     let w = GRID_WIDTH as f32;
     let h = GRID_HEIGHT as f32;
@@ -439,16 +421,6 @@ fn tetromino_movement(
             config.fall_timer.reset(); 
         }
     }
-}
-
-fn is_valid_rotation(positions: &Vec<IVec3>, pivot: IVec3, grid: &GameGrid) -> bool {
-    for pos in positions {
-        let global = pivot + *pos;
-        if !grid.is_valid_pos(global.x, global.y, global.z) || grid.is_occupied(global.x, global.y, global.z) {
-            return false;
-        }
-    }
-    true
 }
 
 fn gravity_system(

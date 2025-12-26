@@ -69,6 +69,34 @@ impl GameGrid {
     }
 }
 
+pub fn rotate_point(point: IVec3, axis: IVec3, forward: bool) -> IVec3 {
+    // 90 degree rotation
+    // Forward: +90 deg. Inverse: -90 deg.
+    if axis.x == 1 {
+        // X Axis: (x, y, z) -> (x, -z, y)
+        if forward { IVec3::new(point.x, -point.z, point.y) }
+        else { IVec3::new(point.x, point.z, -point.y) }
+    } else if axis.y == 1 {
+        // Y Axis: (x, y, z) -> (z, y, -x)
+        if forward { IVec3::new(point.z, point.y, -point.x) }
+        else { IVec3::new(-point.z, point.y, point.x) }
+    } else { // z
+        // Z Axis: (x, y, z) -> (-y, x, z)
+        if forward { IVec3::new(-point.y, point.x, point.z) }
+        else { IVec3::new(point.y, -point.x, point.z) }
+    }
+}
+
+pub fn is_valid_rotation(positions: &Vec<IVec3>, pivot: IVec3, grid: &GameGrid) -> bool {
+    for pos in positions {
+        let global = pivot + *pos;
+        if !grid.is_valid_pos(global.x, global.y, global.z) || grid.is_occupied(global.x, global.y, global.z) {
+            return false;
+        }
+    }
+    true
+}
+
 pub fn get_shape_blocks(piece_type: TetrominoType) -> Vec<IVec3> {
     match piece_type {
         // Defined in X/Z plane (y=0)
@@ -129,5 +157,47 @@ mod tests {
         
         // Horizontal OOB still applies even if above grid height
         assert!(grid.is_occupied(-1, GRID_HEIGHT, 0));
+    }
+
+    #[test]
+    fn test_rotation() {
+        let p = IVec3::new(1, 0, 0);
+        // Rotate around Y: (1,0,0) -> (0,0,-1)
+        let r1 = rotate_point(p, IVec3::Y, true);
+        assert_eq!(r1, IVec3::new(0, 0, -1));
+
+        // Rotate around X: (0,1,0) -> (0,0,1)
+        let p2 = IVec3::new(0, 1, 0);
+        let r2 = rotate_point(p2, IVec3::X, true);
+        assert_eq!(r2, IVec3::new(0, -0, 1)); // (x, -z, y) -> (0, 0, 1)
+
+        // Rotate around Z: (1,0,0) -> (0,1,0)
+        let r3 = rotate_point(p, IVec3::Z, true);
+        assert_eq!(r3, IVec3::new(0, 1, 0));
+    }
+
+    #[test]
+    fn test_is_valid_pos() {
+        let grid = GameGrid::new();
+        assert!(grid.is_valid_pos(0, 0, 0));
+        assert!(grid.is_valid_pos(GRID_WIDTH - 1, 0, GRID_DEPTH - 1));
+        assert!(grid.is_valid_pos(0, 100, 0)); // Height is open upwards
+        assert!(!grid.is_valid_pos(-1, 0, 0));
+        assert!(!grid.is_valid_pos(0, -1, 0));
+        assert!(!grid.is_valid_pos(0, 0, -1));
+        assert!(!grid.is_valid_pos(GRID_WIDTH, 0, 0));
+        assert!(!grid.is_valid_pos(0, 0, GRID_DEPTH));
+    }
+
+    #[test]
+    fn test_get_shape_blocks() {
+        let shapes = [
+            TetrominoType::I, TetrominoType::O, TetrominoType::T, 
+            TetrominoType::S, TetrominoType::Z, TetrominoType::J, TetrominoType::L
+        ];
+        for s in shapes {
+            let blocks = get_shape_blocks(s);
+            assert_eq!(blocks.len(), 4);
+        }
     }
 }
