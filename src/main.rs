@@ -63,6 +63,7 @@ fn main() {
             check_lines,
             render_landed_blocks,
             render_boundaries,
+            render_next_piece_preview,
             ui_system,
         ).run_if(in_state(GameState::Playing)))
         .add_systems(Update, pause_input)
@@ -84,6 +85,23 @@ fn get_random_piece() -> TetrominoType {
     ];
     let mut rng = rand::rng(); 
     shapes[rng.random_range(0..shapes.len())]
+}
+
+fn render_next_piece_preview(
+    mut gizmos: Gizmos,
+    next_piece: Res<NextPiece>,
+) {
+    let preview_pivot = Vec3::new(8.0, 10.0, 2.5);
+    let shapes = get_shape_blocks(next_piece.0);
+    let color = get_random_color(next_piece.0);
+
+    for pos in shapes {
+        let global_pos = preview_pivot + Vec3::new(pos.x as f32, pos.y as f32, pos.z as f32);
+        gizmos.cuboid(
+            Transform::from_translation(global_pos).with_scale(Vec3::splat(0.8)),
+            color,
+        );
+    }
 }
 
 fn setup(
@@ -178,6 +196,8 @@ fn spawn_tetromino(
 
     let piece_type = next_piece.0;
     next_piece.0 = get_random_piece();
+    
+    println!("Spawning: {:?}, Next: {:?}", piece_type, next_piece.0);
 
     let start_pos = IVec3::new(GRID_WIDTH / 2, GRID_HEIGHT, GRID_DEPTH / 2);
     let shapes = get_shape_blocks(piece_type);
