@@ -66,13 +66,14 @@ impl GameGrid {
 
 pub fn get_shape_blocks(piece_type: TetrominoType) -> Vec<IVec3> {
     match piece_type {
+        // Defined in X/Z plane (y=0)
         TetrominoType::I => vec![IVec3::new(0,0,0), IVec3::new(-1,0,0), IVec3::new(1,0,0), IVec3::new(2,0,0)],
-        TetrominoType::O => vec![IVec3::new(0,0,0), IVec3::new(1,0,0), IVec3::new(0,1,0), IVec3::new(1,1,0)],
-        TetrominoType::T => vec![IVec3::new(0,0,0), IVec3::new(-1,0,0), IVec3::new(1,0,0), IVec3::new(0,1,0)],
-        TetrominoType::S => vec![IVec3::new(0,0,0), IVec3::new(-1,0,0), IVec3::new(0,1,0), IVec3::new(1,1,0)],
-        TetrominoType::Z => vec![IVec3::new(0,0,0), IVec3::new(1,0,0), IVec3::new(0,1,0), IVec3::new(-1,1,0)],
-        TetrominoType::J => vec![IVec3::new(0,0,0), IVec3::new(-1,0,0), IVec3::new(1,0,0), IVec3::new(-1,1,0)],
-        TetrominoType::L => vec![IVec3::new(0,0,0), IVec3::new(-1,0,0), IVec3::new(1,0,0), IVec3::new(1,1,0)],
+        TetrominoType::O => vec![IVec3::new(0,0,0), IVec3::new(1,0,0), IVec3::new(0,0,1), IVec3::new(1,0,1)],
+        TetrominoType::T => vec![IVec3::new(0,0,0), IVec3::new(-1,0,0), IVec3::new(1,0,0), IVec3::new(0,0,1)],
+        TetrominoType::S => vec![IVec3::new(0,0,0), IVec3::new(-1,0,0), IVec3::new(0,0,1), IVec3::new(1,0,1)],
+        TetrominoType::Z => vec![IVec3::new(0,0,0), IVec3::new(1,0,0), IVec3::new(0,0,1), IVec3::new(-1,0,1)],
+        TetrominoType::J => vec![IVec3::new(0,0,0), IVec3::new(-1,0,0), IVec3::new(1,0,0), IVec3::new(-1,0,1)],
+        TetrominoType::L => vec![IVec3::new(0,0,0), IVec3::new(-1,0,0), IVec3::new(1,0,0), IVec3::new(1,0,1)],
     }
 }
 
