@@ -124,14 +124,15 @@ fn render_next_piece_preview(
     mut gizmos: Gizmos,
     next_piece: Res<NextPiece>,
 ) {
-    let preview_pivot = Vec3::new(-10.0, 10.0, (GRID_DEPTH as f32 - 1.0) / 2.0);
+    // Position the preview to the left side of the main grid below the score UI.
+    let preview_pivot = Vec3::new(-10.0, 0.0, -2.0);
     let shapes = next_piece.0.get_shape_blocks();
     let color = next_piece.0.get_color();
 
     for pos in shapes {
         let global_pos = preview_pivot + Vec3::new(pos.x as f32, pos.y as f32, pos.z as f32);
         gizmos.cuboid(
-            Transform::from_translation(global_pos).with_scale(Vec3::splat(0.8)),
+            Transform::from_translation(global_pos),
             color,
         );
     }
