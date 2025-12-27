@@ -52,14 +52,7 @@ impl GameGrid {
         if x < 0 || x >= GRID_WIDTH || z < 0 || z >= GRID_DEPTH || y < 0 {
             return true;
         }
-        if y >= GRID_HEIGHT {
-            return false;
-        }
-        if let Some(idx) = Self::index(x, y, z) {
-            self.grid[idx].is_some()
-        } else {
-            true
-        }
+        y < GRID_HEIGHT && self.get(x, y, z).is_some()
     }
     
     /// Checks if a position is within the horizontal and bottom boundaries of the grid.
@@ -76,58 +69,36 @@ impl GameGrid {
     
     /// Gets the piece type at a specific grid coordinate, if any.
     pub fn get(&self, x: i32, y: i32, z: i32) -> Option<TetrominoType> {
-         if let Some(idx) = Self::index(x, y, z) {
-            self.grid[idx]
-        } else {
-            None
-        }
+         Self::index(x, y, z).and_then(|idx| self.grid[idx])
     }
 
-    /// Clears full 2D horizontal layers and returns the number of layers cleared.
+    /// Clears full 2D horizontal layers and shifts remaining layers down in-place.
+    /// Returns the number of layers cleared.
     pub fn clear_full_layers(&mut self, dirty: &mut DirtyGrid) -> u32 {
+        let layer_size = (GRID_WIDTH * GRID_DEPTH) as usize;
         let mut layers_cleared = 0;
-        let mut y = 0;
-        while y < GRID_HEIGHT {
-            let mut full = true;
-            for x in 0..GRID_WIDTH {
-                for z in 0..GRID_DEPTH {
-                    if self.get(x, y, z).is_none() {
-                        full = false;
-                        break;
-                    }
-                }
-                if !full { break; }
-            }
+        let mut write_y = 0;
 
-            if full {
+        for read_y in 0..GRID_HEIGHT {
+            let start = read_y as usize * layer_size;
+            let is_full = self.grid[start..start + layer_size].iter().all(|c| c.is_some());
+            
+            if is_full {
                 layers_cleared += 1;
-                dirty.0 = true;
-                // Shift down
-                for dy in y..(GRID_HEIGHT - 1) {
-                    for x in 0..GRID_WIDTH {
-                        for z in 0..GRID_DEPTH {
-                            let above = self.get(x, dy + 1, z);
-                            if let Some(t) = above {
-                                 self.set(x, dy, z, t);
-                            } else {
-                                 if let Some(idx) = Self::index(x, dy, z) {
-                                     self.grid[idx] = None;
-                                 }
-                            }
-                        }
-                    }
-                }
-                // Clear top row
-                for x in 0..GRID_WIDTH {
-                    for z in 0..GRID_DEPTH {
-                         if let Some(idx) = Self::index(x, GRID_HEIGHT-1, z) {
-                             self.grid[idx] = None;
-                         }
-                    }
-                }
             } else {
-                y += 1;
+                if read_y != write_y {
+                    let src_start = start;
+                    let dst_start = write_y as usize * layer_size;
+                    self.grid.copy_within(src_start..src_start + layer_size, dst_start);
+                }
+                write_y += 1;
             }
+        }
+
+        if layers_cleared > 0 {
+            dirty.0 = true;
+            let clear_start = write_y as usize * layer_size;
+            self.grid[clear_start..].fill(None);
         }
         layers_cleared
     }
@@ -182,44 +153,30 @@ pub fn try_rotate_with_kicks(
 
 /// Rotates a 3D point 90 degrees around one of the cardinal axes.
 pub fn rotate_point(point: IVec3, axis: IVec3, forward: bool) -> IVec3 {
-    // 90 degree rotation
-    // Forward: +90 deg. Inverse: -90 deg.
-    if axis.x == 1 {
-        // X Axis: (x, y, z) -> (x, -z, y)
-        if forward { IVec3::new(point.x, -point.z, point.y) }
-        else { IVec3::new(point.x, point.z, -point.y) }
-    } else if axis.y == 1 {
-        // Y Axis: (x, y, z) -> (z, y, -x)
-        if forward { IVec3::new(point.z, point.y, -point.x) }
-        else { IVec3::new(-point.z, point.y, point.x) }
-    } else { // z
-        // Z Axis: (x, y, z) -> (-y, x, z)
-        if forward { IVec3::new(-point.y, point.x, point.z) }
-        else { IVec3::new(point.y, -point.x, point.z) }
+    match (axis.x, axis.y, axis.z, forward) {
+        (1, _, _, true) => IVec3::new(point.x, -point.z, point.y),
+        (1, _, _, false) => IVec3::new(point.x, point.z, -point.y),
+        (_, 1, _, true) => IVec3::new(point.z, point.y, -point.x),
+        (_, 1, _, false) => IVec3::new(-point.z, point.y, point.x),
+        (_, _, 1, true) => IVec3::new(-point.y, point.x, point.z),
+        (_, _, 1, false) => IVec3::new(point.y, -point.x, point.z),
+        _ => point,
     }
 }
 
 /// Checks if a set of relative positions can be placed at a given pivot within the grid.
 pub fn can_place(positions: &[IVec3], pivot: IVec3, grid: &GameGrid) -> bool {
-    for pos in positions {
-        let global = pivot + *pos;
-        if !grid.is_valid_pos(global.x, global.y, global.z) || grid.is_occupied(global.x, global.y, global.z) {
-            return false;
-        }
-    }
-    true
+    positions.iter().all(|&pos| {
+        let global = pivot + pos;
+        grid.is_valid_pos(global.x, global.y, global.z) && !grid.is_occupied(global.x, global.y, global.z)
+    })
 }
 
 /// Calculates the final pivot position for a hard drop.
 pub fn calculate_hard_drop(tetromino: &Tetromino, grid: &GameGrid) -> IVec3 {
     let mut current_pivot = tetromino.pivot;
-    loop {
-        let next_y_pivot = current_pivot + IVec3::new(0, -1, 0);
-        if can_place(&tetromino.positions, next_y_pivot, grid) {
-            current_pivot = next_y_pivot;
-        } else {
-            break;
-        }
+    while can_place(&tetromino.positions, current_pivot + IVec3::NEG_Y, grid) {
+        current_pivot += IVec3::NEG_Y;
     }
     current_pivot
 }
