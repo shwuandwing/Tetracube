@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use bevy::camera::ScalingMode;
 use std::time::Duration;
 use rand::Rng;
 
@@ -125,14 +124,14 @@ fn render_next_piece_preview(
     mut gizmos: Gizmos,
     next_piece: Res<NextPiece>,
 ) {
-    let preview_pivot = Vec3::new(-12.0, 0.0, -2.0);
-    let shapes = get_shape_blocks(next_piece.0);
-    let color = get_tetromino_color(next_piece.0);
+    let preview_pivot = Vec3::new(-10.0, 10.0, (GRID_DEPTH as f32 - 1.0) / 2.0);
+    let shapes = next_piece.0.get_shape_blocks();
+    let color = next_piece.0.get_color();
 
     for pos in shapes {
         let global_pos = preview_pivot + Vec3::new(pos.x as f32, pos.y as f32, pos.z as f32);
         gizmos.cuboid(
-            Transform::from_translation(global_pos).with_scale(Vec3::splat(1.0)),
+            Transform::from_translation(global_pos).with_scale(Vec3::splat(0.8)),
             color,
         );
     }
@@ -276,30 +275,29 @@ fn spawn_tetromino(
         return;
     }
 
-    let piece_type = next_piece.0;
-    next_piece.0 = get_random_piece();
+        let piece_type = next_piece.0;
+        next_piece.0 = get_random_piece();
+        
+        let start_pos = IVec3::new(GRID_WIDTH / 2, GRID_HEIGHT, GRID_DEPTH / 2);
+        let shapes = piece_type.get_shape_blocks();
+        
+        // Check game over
+        if !can_place(&shapes, start_pos, &game_grid) {
+             next_piece_state.set(GameState::GameOver);
+             return;
+        }
     
-    let start_pos = IVec3::new(GRID_WIDTH / 2, GRID_HEIGHT, GRID_DEPTH / 2);
-    let shapes = get_shape_blocks(piece_type);
-    
-    // Check game over
-    if !can_place(&shapes, start_pos, &game_grid) {
-         next_piece_state.set(GameState::GameOver);
-         return;
+        commands.spawn((
+            Tetromino {
+                piece_type,
+                positions: shapes,
+                pivot: start_pos,
+                color: piece_type.get_color(),
+            },
+            ActiveBlock,
+        ));
     }
-
-    commands.spawn(( 
-        Tetromino {
-            piece_type,
-            positions: shapes,
-            pivot: start_pos,
-            color: get_tetromino_color(piece_type),
-        },
-        ActiveBlock,
-    ));
-}
-
-/// Renders the currently active (falling) tetromino using wireframes.
+    /// Renders the currently active (falling) tetromino using wireframes.
 fn tetromino_render_active(
     mut gizmos: Gizmos,
     query: Query<&Tetromino, With<ActiveBlock>>,
@@ -493,10 +491,8 @@ fn render_landed_grid(
                         Transform::from_xyz(x as f32, y as f32, z as f32),
                         LandedBlock,
                     ));
-
-                    // 2. Add to Indicators Cache
-                    let piece_color = get_tetromino_color(piece_type);
-                    indicators.0.push(( 
+                    let piece_color = piece_type.get_color();
+                    indicators.0.push((
                         Transform::from_xyz(x as f32, y as f32, z as f32).with_scale(Vec3::splat(1.01)),
                         piece_color,
                     ));
@@ -637,52 +633,47 @@ fn update_layer_visualization(
                 commands.entity(child).despawn();
             }
         }
-        for y in 0..GRID_HEIGHT {
-            let mut has_locked = false;
-            for x in 0..GRID_WIDTH {
-                for z in 0..GRID_DEPTH {
-                    if game_grid.get(x, y, z).is_some() { has_locked = true; break; }
-                }
-                if has_locked { break; }
-            }
-            if y == 0 || has_locked {
-                commands.entity(container).with_children(|parent| {
-                    parent.spawn(( 
-                        Node {
-                            width: Val::Px(100.0), height: Val::Px(100.0),
-                            margin: UiRect::all(Val::Px(5.0)),
-                            flex_direction: FlexDirection::Column,
-                            border: UiRect::all(Val::Px(1.0)),
-                            ..default()
-                        },
-                        BorderColor::all(Color::WHITE),
-                    )).with_children(|grid_parent| {
-                        grid_parent.spawn(( 
-                            Text::new(format!("Layer {}", y)),
-                            Node { height: Val::Px(15.0), ..default() }
-                        ));
-                        grid_parent.spawn(Node {
-                            display: Display::Grid,
-                            grid_template_columns: RepeatedGridTrack::px(8, 10.0),
-                            grid_template_rows: RepeatedGridTrack::px(8, 10.0),
-                            ..default()
-                        }).with_children(|cells_parent| {
-                            for z in 0..GRID_DEPTH {
-                                for x in 0..GRID_WIDTH {
-                                    let color = if let Some(pt) = game_grid.get(x, y, z) {
-                                        get_tetromino_color(pt)
-                                    } else { Color::NONE };
-                                    cells_parent.spawn(( 
-                                        Node { width: Val::Px(8.0), height: Val::Px(8.0), border: UiRect::all(Val::Px(0.5)), ..default() },
-                                        BackgroundColor(color),
-                                        BorderColor::all(Color::srgb(0.2, 0.2, 0.2)),
-                                    ));
-                                }
-                            }
+                for y in 0..GRID_HEIGHT {
+                    // Always show Layer 0, others only if they have locked cells
+                    if y == 0 || !game_grid.is_layer_empty(y) {
+                        commands.entity(container).with_children(|parent| {
+                            parent.spawn((
+                                Node {
+                                    width: Val::Px(100.0), height: Val::Px(100.0),
+                                    margin: UiRect::all(Val::Px(5.0)),
+                                    flex_direction: FlexDirection::Column,
+                                    border: UiRect::all(Val::Px(1.0)),
+                                    ..default()
+                                },
+                                BorderColor::all(Color::WHITE),
+                            )).with_children(|grid_parent| {
+                                grid_parent.spawn((
+                                    Text::new(format!("Layer {}", y)),
+                                    Node { height: Val::Px(15.0), ..default() }
+                                ));
+                                grid_parent.spawn(Node {
+                                    display: Display::Grid,
+                                    grid_template_columns: RepeatedGridTrack::px(8, 10.0),
+                                    grid_template_rows: RepeatedGridTrack::px(8, 10.0),
+                                    ..default()
+                                }).with_children(|cells_parent| {
+                                    for z in 0..GRID_DEPTH {
+                                        for x in 0..GRID_WIDTH {
+                                            let color = if let Some(pt) = game_grid.get(x, y, z) {
+                                                pt.get_color()
+                                            } else { Color::NONE };
+                                            cells_parent.spawn((
+                                                Node { width: Val::Px(8.0), height: Val::Px(8.0), border: UiRect::all(Val::Px(0.5)), ..default() },
+                                                BackgroundColor(color),
+                                                BorderColor::all(Color::srgb(0.2, 0.2, 0.2)),
+                                            ));
+                                        }
+                                    }
+                                });
+                            });
                         });
-                    });
-                });
-            }
-        }
+                    }
+                }
+        
     }
 }

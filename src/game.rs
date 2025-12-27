@@ -11,6 +11,37 @@ pub enum TetrominoType {
     Tripod, ScrewL, ScrewR,
 }
 
+impl TetrominoType {
+    /// Returns the relative block positions for a given tetromino type.
+    pub fn get_shape_blocks(&self) -> Vec<IVec3> {
+        match self {
+            // Defined in X/Z plane (y=0)
+            TetrominoType::I => vec![IVec3::new(0,0,0), IVec3::new(-1,0,0), IVec3::new(1,0,0), IVec3::new(2,0,0)],
+            TetrominoType::O => vec![IVec3::new(0,0,0), IVec3::new(1,0,0), IVec3::new(0,0,1), IVec3::new(1,0,1)],
+            TetrominoType::T => vec![IVec3::new(0,0,0), IVec3::new(-1,0,0), IVec3::new(1,0,0), IVec3::new(0,0,1)],
+            TetrominoType::Z => vec![IVec3::new(0,0,0), IVec3::new(1,0,0), IVec3::new(0,0,1), IVec3::new(-1,0,1)],
+            TetrominoType::L => vec![IVec3::new(0,0,0), IVec3::new(-1,0,0), IVec3::new(1,0,0), IVec3::new(1,0,1)],
+            TetrominoType::Tripod => vec![IVec3::new(0,0,0), IVec3::new(1,0,0), IVec3::new(0,1,0), IVec3::new(0,0,1)],
+            TetrominoType::ScrewL => vec![IVec3::new(0,0,0), IVec3::new(1,0,0), IVec3::new(1,1,0), IVec3::new(1,1,1)],
+            TetrominoType::ScrewR => vec![IVec3::new(0,0,0), IVec3::new(1,0,0), IVec3::new(1,1,0), IVec3::new(1,1,-1)],
+        }
+    }
+
+    /// Returns the primary color for a given tetromino type.
+    pub fn get_color(&self) -> Color {
+        match self {
+            TetrominoType::I => Color::srgb(0.0, 1.0, 1.0), // Cyan
+            TetrominoType::O => Color::srgb(1.0, 1.0, 0.0), // Yellow
+            TetrominoType::T => Color::srgb(1.0, 0.0, 1.0), // Magenta
+            TetrominoType::Z => Color::srgb(1.0, 0.0, 0.0), // Red
+            TetrominoType::L => Color::srgb(1.0, 0.5, 0.0), // Orange
+            TetrominoType::Tripod => Color::srgb(1.0, 1.0, 1.0), // White
+            TetrominoType::ScrewL => Color::srgb(0.5, 1.0, 0.0), // Lime
+            TetrominoType::ScrewR => Color::srgb(0.5, 0.0, 1.0), // Purple
+        }
+    }
+}
+
 /// Represents an active tetromino piece with its type, relative block positions, global pivot, and color.
 #[derive(Component, Clone)]
 pub struct Tetromino {
@@ -72,6 +103,22 @@ impl GameGrid {
          Self::index(x, y, z).and_then(|idx| self.grid[idx])
     }
 
+    /// Checks if a horizontal layer at height y is full.
+    pub fn is_layer_full(&self, y: i32) -> bool {
+        let layer_size = (GRID_WIDTH * GRID_DEPTH) as usize;
+        let start = y as usize * layer_size;
+        if start >= self.grid.len() { return false; }
+        self.grid[start..start + layer_size].iter().all(|c| c.is_some())
+    }
+
+    /// Checks if a horizontal layer at height y is completely empty.
+    pub fn is_layer_empty(&self, y: i32) -> bool {
+        let layer_size = (GRID_WIDTH * GRID_DEPTH) as usize;
+        let start = y as usize * layer_size;
+        if start >= self.grid.len() { return true; }
+        self.grid[start..start + layer_size].iter().all(|c| c.is_none())
+    }
+
     /// Clears full 2D horizontal layers and shifts remaining layers down in-place.
     /// Returns the number of layers cleared.
     pub fn clear_full_layers(&mut self, dirty: &mut DirtyGrid) -> u32 {
@@ -80,14 +127,11 @@ impl GameGrid {
         let mut write_y = 0;
 
         for read_y in 0..GRID_HEIGHT {
-            let start = read_y as usize * layer_size;
-            let is_full = self.grid[start..start + layer_size].iter().all(|c| c.is_some());
-            
-            if is_full {
+            if self.is_layer_full(read_y) {
                 layers_cleared += 1;
             } else {
                 if read_y != write_y {
-                    let src_start = start;
+                    let src_start = read_y as usize * layer_size;
                     let dst_start = write_y as usize * layer_size;
                     self.grid.copy_within(src_start..src_start + layer_size, dst_start);
                 }
@@ -205,35 +249,6 @@ impl GameStats {
     /// Calculates the current fall speed based on the level.
     pub fn get_fall_speed(&self) -> f32 {
         (0.8 - (self.level as f32 - 1.0) * 0.1).max(0.1)
-    }
-}
-
-/// Returns the relative block positions for a given tetromino type.
-pub fn get_shape_blocks(piece_type: TetrominoType) -> Vec<IVec3> {
-    match piece_type {
-        // Defined in X/Z plane (y=0)
-        TetrominoType::I => vec![IVec3::new(0,0,0), IVec3::new(-1,0,0), IVec3::new(1,0,0), IVec3::new(2,0,0)],
-        TetrominoType::O => vec![IVec3::new(0,0,0), IVec3::new(1,0,0), IVec3::new(0,0,1), IVec3::new(1,0,1)],
-        TetrominoType::T => vec![IVec3::new(0,0,0), IVec3::new(-1,0,0), IVec3::new(1,0,0), IVec3::new(0,0,1)],
-        TetrominoType::Z => vec![IVec3::new(0,0,0), IVec3::new(1,0,0), IVec3::new(0,0,1), IVec3::new(-1,0,1)],
-        TetrominoType::L => vec![IVec3::new(0,0,0), IVec3::new(-1,0,0), IVec3::new(1,0,0), IVec3::new(1,0,1)],
-        TetrominoType::Tripod => vec![IVec3::new(0,0,0), IVec3::new(1,0,0), IVec3::new(0,1,0), IVec3::new(0,0,1)],
-        TetrominoType::ScrewL => vec![IVec3::new(0,0,0), IVec3::new(1,0,0), IVec3::new(1,1,0), IVec3::new(1,1,1)],
-        TetrominoType::ScrewR => vec![IVec3::new(0,0,0), IVec3::new(1,0,0), IVec3::new(1,1,0), IVec3::new(1,1,-1)],
-    }
-}
-
-/// Returns the primary color for a given tetromino type.
-pub fn get_tetromino_color(piece_type: TetrominoType) -> Color {
-     match piece_type {
-        TetrominoType::I => Color::srgb(0.0, 1.0, 1.0), // Cyan
-        TetrominoType::O => Color::srgb(1.0, 1.0, 0.0), // Yellow
-        TetrominoType::T => Color::srgb(1.0, 0.0, 1.0), // Magenta
-        TetrominoType::Z => Color::srgb(1.0, 0.0, 0.0), // Red
-        TetrominoType::L => Color::srgb(1.0, 0.5, 0.0), // Orange
-        TetrominoType::Tripod => Color::srgb(1.0, 1.0, 1.0), // White
-        TetrominoType::ScrewL => Color::srgb(0.5, 1.0, 0.0), // Lime
-        TetrominoType::ScrewR => Color::srgb(0.5, 0.0, 1.0), // Purple
     }
 }
 
@@ -477,13 +492,34 @@ mod tests {
     fn test_new_3d_tetromino_shapes() {
         let types = [TetrominoType::Tripod, TetrominoType::ScrewL, TetrominoType::ScrewR];
         for t in types {
-            let shapes = get_shape_blocks(t);
+            let shapes = t.get_shape_blocks();
             assert_eq!(shapes.len(), 4, "Tetromino {:?} must have 4 blocks", t);
             
-            let color = get_tetromino_color(t);
+            let color = t.get_color();
             // Just verify it doesn't panic and returns something
             assert!(color.to_linear().to_vec4().length() > 0.0);
         }
+    }
+
+    #[test]
+    fn test_layer_empty_full() {
+        let mut grid = GameGrid::new();
+        assert!(grid.is_layer_empty(0));
+        assert!(!grid.is_layer_full(0));
+
+        // Fill layer 0
+        for x in 0..GRID_WIDTH {
+            for z in 0..GRID_DEPTH {
+                grid.set(x, 0, z, TetrominoType::I);
+            }
+        }
+        assert!(!grid.is_layer_empty(0));
+        assert!(grid.is_layer_full(0));
+
+        // Partly fill layer 1
+        grid.set(0, 1, 0, TetrominoType::I);
+        assert!(!grid.is_layer_empty(1));
+        assert!(!grid.is_layer_full(1));
     }
 
     #[test]
@@ -505,17 +541,6 @@ mod tests {
     fn test_try_rotate_with_kicks_wall() {
         let grid = GameGrid::new();
         
-        // Let's use I-like piece at the edge.
-        // Rotation around Y (forward): (z, y, -x)
-        // (1,0,0) -> (0,0,-1)
-        // (2,0,0) -> (0,0,-2)
-        // This won't hit the wall.
-        
-        // Rotation around Z (forward): (-y, x, z)
-        // (1,0,0) -> (0,1,0)
-        // (2,0,0) -> (0,2,0)
-        // This won't hit the wall.
-        
         // Let's use a piece that MUST kick.
         let mut tetromino = Tetromino {
             piece_type: TetrominoType::I,
@@ -523,8 +548,6 @@ mod tests {
             pivot: IVec3::new(GRID_WIDTH - 1, 0, 0),
             color: Color::WHITE,
         };
-        // Rotate Z (forward): (-y, x, z)
-        // (0,1,0) -> (-1,0,0) relative to (7,0,0) -> (6,0,0). Valid.
         
         // Let's put it at X=0 and rotate it to X=-1.
         tetromino.pivot = IVec3::new(0, 0, 0);
