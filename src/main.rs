@@ -433,14 +433,15 @@ fn render_landed_blocks(
     for x in 0..GRID_WIDTH {
         for y in 0..GRID_HEIGHT {
             for z in 0..GRID_DEPTH {
-                if let Some(color) = game_grid.get(x, y, z) {
-                    // Shade by height (visual flair)
-                    let _shade_factor = 0.5 + (y as f32 / GRID_HEIGHT as f32) * 0.5;
+                if game_grid.get(x, y, z).is_some() {
+                    // Color based on level (y) to distinguish height
+                    // Rotate hue by 40 degrees per level for high contrast between layers
+                    let level_color = Color::hsl((y as f32 * 40.0) % 360.0, 0.9, 0.5);
                     
                     commands.spawn(( 
                         Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
                         MeshMaterial3d(materials.add(StandardMaterial {
-                            base_color: color, 
+                            base_color: level_color, 
                             ..default()
                         })),
                         Transform::from_xyz(x as f32, y as f32, z as f32),
