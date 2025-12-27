@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy::camera::ScalingMode;
 use std::time::Duration;
 use rand::Rng;
 
@@ -41,9 +42,13 @@ struct ScoreText;
 #[derive(Component)]
 struct NextPieceText;
 
-/// Marker component for Level UI text.
+/// Marker component for the level UI text.
 #[derive(Component)]
 struct LevelText;
+
+/// Marker component for the layer visualization container.
+#[derive(Component)]
+struct LayerVisualizer;
 
 /// Stores handles to audio assets.
 #[derive(Resource)]
@@ -91,7 +96,9 @@ fn main() {
             render_boundaries,
             render_next_piece_preview,
             ui_system,
-        ).run_if(in_state(GameState::Playing)))
+            update_layer_visualization,
+            clear_dirty_flag,
+        ).chain().run_if(in_state(GameState::Playing)))
         .add_systems(Update, pause_input)
         .add_systems(OnEnter(GameState::GameOver), game_over_setup)
         .add_systems(Update, game_over_input.run_if(in_state(GameState::GameOver)))
@@ -147,7 +154,7 @@ fn setup(
     };
     
     // Start background music
-    commands.spawn((
+    commands.spawn(( 
         AudioPlayer::new(audio_handles.bgm.clone()),
         PlaybackSettings::LOOP,
     ));
@@ -164,7 +171,7 @@ fn setup(
     ));
 
     // Light
-    commands.spawn((
+    commands.spawn(( 
         PointLight {
             intensity: 2000000.0, // Lumens, high for visibility
             range: 100.0,
@@ -184,7 +191,7 @@ fn setup(
     let grid_color = Color::srgb(0.2, 0.2, 0.2);
     for x in 0..GRID_WIDTH {
         for z in 0..GRID_DEPTH {
-             commands.spawn((
+             commands.spawn(( 
                 Mesh3d(meshes.add(Cuboid::new(0.9, 0.1, 0.9))),
                 MeshMaterial3d(materials.add(StandardMaterial {
                     base_color: grid_color,
@@ -196,7 +203,7 @@ fn setup(
     }
     
     // UI Setup
-    commands.spawn((
+    commands.spawn(( 
         Text::new("Score: 0"),
         Node {
             position_type: PositionType::Absolute,
@@ -207,7 +214,7 @@ fn setup(
         ScoreText,
     ));
     
-    commands.spawn((
+    commands.spawn(( 
         Text::new("Next: "),
         Node {
             position_type: PositionType::Absolute,
@@ -218,7 +225,7 @@ fn setup(
         NextPieceText,
     ));
 
-    commands.spawn((
+    commands.spawn(( 
         Text::new("Level: 1"),
         Node {
             position_type: PositionType::Absolute,
@@ -230,7 +237,7 @@ fn setup(
     ));
 
     // Initial instruction
-    commands.spawn((
+    commands.spawn(( 
         Text::new("WASD/Arrows: Move | Q/E/R: Rotate (+Shift: Reverse) | Space: Drop | P: Pause"),
         Node {
              position_type: PositionType::Absolute,
@@ -238,6 +245,22 @@ fn setup(
              left: Val::Px(10.0),
              ..default()
         },
+    ));
+
+    // Layer Visualization Container
+    commands.spawn(( 
+        Node {
+            position_type: PositionType::Absolute,
+            right: Val::Px(10.0),
+            top: Val::Px(10.0),
+            width: Val::Percent(25.0),
+            height: Val::Percent(90.0),
+            flex_direction: FlexDirection::Column,
+            align_items: AlignItems::Center,
+            overflow: Overflow::clip(),
+            ..default()
+        },
+        LayerVisualizer,
     ));
 }
 
@@ -256,8 +279,6 @@ fn spawn_tetromino(
     let piece_type = next_piece.0;
     next_piece.0 = get_random_piece();
     
-    println!("Spawning: {:?}, Next: {:?}", piece_type, next_piece.0);
-
     let start_pos = IVec3::new(GRID_WIDTH / 2, GRID_HEIGHT, GRID_DEPTH / 2);
     let shapes = get_shape_blocks(piece_type);
     
@@ -267,7 +288,7 @@ fn spawn_tetromino(
          return;
     }
 
-    commands.spawn((
+    commands.spawn(( 
         Tetromino {
             piece_type,
             positions: shapes,
@@ -346,7 +367,6 @@ fn tetromino_movement(
     audio: Res<AudioHandles>,
     mut commands: Commands,
 ) {
-    // FIX: Use iter_mut().next() instead of get_single_mut()
     if let Some(mut tetromino) = query.iter_mut().next() {
         config.move_timer.tick(time.delta());
         
@@ -443,16 +463,13 @@ fn gravity_system(
 fn render_landed_grid(
     mut commands: Commands,
     game_grid: Res<GameGrid>,
-    mut dirty: ResMut<DirtyGrid>,
+    dirty: Res<DirtyGrid>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut indicators: ResMut<LandedIndicators>,
     query: Query<Entity, With<LandedBlock>>, 
 ) {
     if !dirty.0 { return; }
-    dirty.0 = false;
-
-    // Despawn all landed blocks to redraw
     for entity in &query {
         commands.entity(entity).despawn();
     }
@@ -479,7 +496,7 @@ fn render_landed_grid(
 
                     // 2. Add to Indicators Cache
                     let piece_color = get_tetromino_color(piece_type);
-                    indicators.0.push((
+                    indicators.0.push(( 
                         Transform::from_xyz(x as f32, y as f32, z as f32).with_scale(Vec3::splat(1.01)),
                         piece_color,
                     ));
@@ -587,18 +604,85 @@ fn game_over_input(
         *stats = GameStats::new();
         dirty.0 = true;
         config.fall_timer.set_duration(Duration::from_secs_f32(0.8));
-        
-        // Cleanup entities
         for entity in &active_query {
-            commands.entity(entity).despawn();
+            commands.entity(entity).despawn();  
         }
-        for entity in &landed_query {
-             commands.entity(entity).despawn();
+        for entity in &landed_query { 
+            commands.entity(entity).despawn(); 
         }
-        for entity in &text_query {
-            commands.entity(entity).despawn();
+        for entity in &text_query { 
+            commands.entity(entity).despawn(); 
         }
         
         next_state.set(GameState::Playing);
+    }
+}
+
+/// System to clear the dirty flag at the end of the frame.
+fn clear_dirty_flag(mut dirty: ResMut<DirtyGrid>) {
+    dirty.0 = false;
+}
+
+/// Updates the 2D layer visualization.
+fn update_layer_visualization(
+    mut commands: Commands,
+    game_grid: Res<GameGrid>,
+    dirty: Res<DirtyGrid>,
+    query: Query<(Entity, Option<&Children>), With<LayerVisualizer>>,
+) {
+    if !dirty.0 { return; }
+    if let Some((container, children)) = query.iter().next() {
+        if let Some(children) = children {
+            for &child in children {
+                commands.entity(child).despawn();
+            }
+        }
+        for y in 0..GRID_HEIGHT {
+            let mut has_locked = false;
+            for x in 0..GRID_WIDTH {
+                for z in 0..GRID_DEPTH {
+                    if game_grid.get(x, y, z).is_some() { has_locked = true; break; }
+                }
+                if has_locked { break; }
+            }
+            if y == 0 || has_locked {
+                commands.entity(container).with_children(|parent| {
+                    parent.spawn(( 
+                        Node {
+                            width: Val::Px(100.0), height: Val::Px(100.0),
+                            margin: UiRect::all(Val::Px(5.0)),
+                            flex_direction: FlexDirection::Column,
+                            border: UiRect::all(Val::Px(1.0)),
+                            ..default()
+                        },
+                        BorderColor::all(Color::WHITE),
+                    )).with_children(|grid_parent| {
+                        grid_parent.spawn(( 
+                            Text::new(format!("Layer {}", y)),
+                            Node { height: Val::Px(15.0), ..default() }
+                        ));
+                        grid_parent.spawn(Node {
+                            display: Display::Grid,
+                            grid_template_columns: RepeatedGridTrack::px(8, 10.0),
+                            grid_template_rows: RepeatedGridTrack::px(8, 10.0),
+                            ..default()
+                        }).with_children(|cells_parent| {
+                            for z in 0..GRID_DEPTH {
+                                for x in 0..GRID_WIDTH {
+                                    let color = if let Some(pt) = game_grid.get(x, y, z) {
+                                        get_tetromino_color(pt)
+                                    } else { Color::NONE };
+                                    cells_parent.spawn(( 
+                                        Node { width: Val::Px(8.0), height: Val::Px(8.0), border: UiRect::all(Val::Px(0.5)), ..default() },
+                                        BackgroundColor(color),
+                                        BorderColor::all(Color::srgb(0.2, 0.2, 0.2)),
+                                    ));
+                                }
+                            }
+                        });
+                    });
+                });
+            }
+        }
     }
 }
