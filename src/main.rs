@@ -264,7 +264,9 @@ fn setup(
             width: Val::Percent(25.0),
             height: Val::Percent(90.0),
             flex_direction: FlexDirection::Column,
-            align_items: AlignItems::Center,
+            flex_wrap: FlexWrap::Wrap,
+            align_content: AlignContent::FlexEnd,
+            align_items: AlignItems::FlexEnd,
             overflow: Overflow::clip(),
             ..default()
         },
@@ -718,8 +720,8 @@ fn update_layer_visualization(
                     parent
                         .spawn((
                             Node {
-                                width: Val::Px(100.0),
-                                height: Val::Px(100.0),
+                                width: Val::Px((GRID_WIDTH as f32 * 8.0) + 5.0),
+                                height: Val::Px((GRID_DEPTH as f32 * 8.0) + 12.0),
                                 margin: UiRect::all(Val::Px(5.0)),
                                 flex_direction: FlexDirection::Column,
                                 border: UiRect::all(Val::Px(1.0)),
@@ -728,18 +730,20 @@ fn update_layer_visualization(
                             BorderColor::all(Color::WHITE),
                         ))
                         .with_children(|grid_parent| {
-                            grid_parent.spawn((
-                                Text::new(format!("Layer {}", y)),
-                                Node {
-                                    height: Val::Px(15.0),
-                                    ..default()
-                                },
-                            ));
+                        grid_parent.spawn((
+                            Text::new(format!("Layer {}", y)),
+                            TextFont {
+                                font_size: 12.0,
+                                ..default()
+                            },
+                            TextColor(Color::WHITE),
+                            Node { height: Val::Px(12.0), ..default() }
+                        ));
                             grid_parent
                                 .spawn(Node {
                                     display: Display::Grid,
-                                    grid_template_columns: RepeatedGridTrack::px(8, 10.0),
-                                    grid_template_rows: RepeatedGridTrack::px(8, 10.0),
+                                    grid_template_columns: RepeatedGridTrack::px(GRID_WIDTH, 8.0),
+                                    grid_template_rows: RepeatedGridTrack::px(GRID_DEPTH, 8.0),
                                     ..default()
                                 })
                                 .with_children(|cells_parent| {
@@ -752,8 +756,8 @@ fn update_layer_visualization(
                                             };
                                             cells_parent.spawn((
                                                 Node {
-                                                    width: Val::Px(8.0),
-                                                    height: Val::Px(8.0),
+                                                    width: Val::Px(6.0),
+                                                    height: Val::Px(6.0),
                                                     border: UiRect::all(Val::Px(0.5)),
                                                     ..default()
                                                 },
