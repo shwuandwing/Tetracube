@@ -73,7 +73,8 @@ fn main() {
             tetromino_render_active,
             gravity_system, 
             check_layers,
-            render_landed_grid,
+            render_landed_blocks,
+            render_landed_block_indicators,
             render_boundaries,
             render_next_piece_preview,
             ui_system,
@@ -222,7 +223,6 @@ fn setup(
         },
     ));
 }
-
 fn spawn_tetromino(
     mut commands: Commands,
     query: Query<&ActiveBlock>,
@@ -248,7 +248,7 @@ fn spawn_tetromino(
          return;
     }
 
-    commands.spawn((
+    commands.spawn(( 
         Tetromino {
             piece_type,
             positions: shapes,
@@ -314,7 +314,6 @@ fn render_boundaries(mut gizmos: Gizmos) {
         gizmos.line(Vec3::new(-0.5, y_f, d - 0.5), Vec3::new(-0.5, y_f, -0.5), color);
     }
 }
-
 fn tetromino_movement(
     mut query: Query<&mut Tetromino, With<ActiveBlock>>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
@@ -416,13 +415,13 @@ fn gravity_system(
     }
 }
 
-fn render_landed_grid(
+fn render_landed_blocks(
     mut commands: Commands,
     game_grid: Res<GameGrid>,
     mut dirty: ResMut<DirtyGrid>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    query: Query<Entity, With<LandedBlock>>,
+    query: Query<Entity, With<LandedBlock>>, 
 ) {
     if !dirty.0 { return; }
     dirty.0 = false;
@@ -436,27 +435,15 @@ fn render_landed_grid(
     for x in 0..GRID_WIDTH {
         for y in 0..GRID_HEIGHT {
             for z in 0..GRID_DEPTH {
-                if let Some(piece_type) = game_grid.get(x, y, z) {
-                    // 1. Solid Level Color Block
+                if game_grid.get(x, y, z).is_some() {
+                    // Color based on level (y) to distinguish height
+                    // Rotate hue by 40 degrees per level for high contrast between layers
                     let level_color = Color::hsl((y as f32 * 40.0) % 360.0, 0.9, 0.5);
-                    commands.spawn((
+                    
+                    commands.spawn(( 
                         Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
                         MeshMaterial3d(materials.add(StandardMaterial {
                             base_color: level_color, 
-                            ..default()
-                        })),
-                        Transform::from_xyz(x as f32, y as f32, z as f32),
-                        LandedBlock,
-                    ));
-
-                    // 2. Type Indicator (slightly larger wireframe-like border)
-                    let piece_color = get_tetromino_color(piece_type);
-                    commands.spawn((
-                        Mesh3d(meshes.add(Cuboid::new(1.02, 1.02, 1.02))),
-                        MeshMaterial3d(materials.add(StandardMaterial {
-                            base_color: piece_color,
-                            unlit: true,
-                            alpha_mode: AlphaMode::Blend,
                             ..default()
                         })),
                         Transform::from_xyz(x as f32, y as f32, z as f32),
@@ -496,7 +483,7 @@ fn pause_input(
         match state.get() {
             GameState::Playing => next_state.set(GameState::Paused),
             GameState::Paused => next_state.set(GameState::Playing),
-            _ => {} // Ignore other states like GameOver
+            _ => {}
         }
     }
 }
@@ -505,7 +492,7 @@ fn ui_system(
     stats: Res<GameStats>,
     next: Res<NextPiece>,
     mut score_query: Query<&mut Text, (With<ScoreText>, Without<NextPieceText>, Without<LevelText>) >,
-    mut next_query: Query<&mut Text, (With<NextPieceText>, Without<LevelText>) >,
+    mut next_query: Query<&mut Text, (With<NextPieceText>, Without<LevelText>)>,
     mut level_query: Query<&mut Text, With<LevelText>>,
 ) {
     for mut text in &mut score_query {
@@ -519,8 +506,27 @@ fn ui_system(
     }
 }
 
+fn render_landed_block_indicators(
+    mut gizmos: Gizmos,
+    game_grid: Res<GameGrid>,
+) {
+    for x in 0..GRID_WIDTH {
+        for y in 0..GRID_HEIGHT {
+            for z in 0..GRID_DEPTH {
+                if let Some(piece_type) = game_grid.get(x, y, z) {
+                    let piece_color = get_tetromino_color(piece_type);
+                    gizmos.cuboid(
+                        Transform::from_xyz(x as f32, y as f32, z as f32).with_scale(Vec3::splat(1.01)),
+                        piece_color,
+                    );
+                }
+            }
+        }
+    }
+}
+
 fn game_over_setup(mut commands: Commands) {
-    commands.spawn((
+    commands.spawn(( 
         Text::new("GAME OVER\nPress R to Restart"),
         Node {
             position_type: PositionType::Absolute,
