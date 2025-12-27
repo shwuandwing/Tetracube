@@ -1,6 +1,6 @@
 use bevy::prelude::*;
-use std::time::Duration;
 use rand::Rng;
+use std::time::Duration;
 
 mod game;
 use game::*;
@@ -84,23 +84,31 @@ fn main() {
         .insert_resource(GameStats::new())
         .init_resource::<LandedIndicators>()
         .add_systems(Startup, setup)
-        .add_systems(Update, (
-            spawn_tetromino,
-            tetromino_movement,
-            tetromino_render_active,
-            gravity_system, 
-            check_layers,
-            render_landed_grid,
-            render_cached_indicators,
-            render_boundaries,
-            render_next_piece_preview,
-            ui_system,
-            update_layer_visualization,
-            clear_dirty_flag,
-        ).chain().run_if(in_state(GameState::Playing)))
+        .add_systems(
+            Update,
+            (
+                spawn_tetromino,
+                tetromino_movement,
+                tetromino_render_active,
+                gravity_system,
+                check_layers,
+                render_landed_grid,
+                render_cached_indicators,
+                render_boundaries,
+                render_next_piece_preview,
+                ui_system,
+                update_layer_visualization,
+                clear_dirty_flag,
+            )
+                .chain()
+                .run_if(in_state(GameState::Playing)),
+        )
         .add_systems(Update, pause_input)
         .add_systems(OnEnter(GameState::GameOver), game_over_setup)
-        .add_systems(Update, game_over_input.run_if(in_state(GameState::GameOver)))
+        .add_systems(
+            Update,
+            game_over_input.run_if(in_state(GameState::GameOver)),
+        )
         .run();
 }
 
@@ -111,19 +119,21 @@ struct NextPiece(TetrominoType);
 /// Returns a random TetrominoType.
 fn get_random_piece() -> TetrominoType {
     let shapes = [
-        TetrominoType::I, TetrominoType::O, TetrominoType::T, 
-        TetrominoType::Z, TetrominoType::L,
-        TetrominoType::Tripod, TetrominoType::ScrewL, TetrominoType::ScrewR,
+        TetrominoType::I,
+        TetrominoType::O,
+        TetrominoType::T,
+        TetrominoType::Z,
+        TetrominoType::L,
+        TetrominoType::Tripod,
+        TetrominoType::ScrewL,
+        TetrominoType::ScrewR,
     ];
-    let mut rng = rand::rng(); 
+    let mut rng = rand::rng();
     shapes[rng.random_range(0..shapes.len())]
 }
 
 /// Renders a 3D preview of the next piece using gizmos.
-fn render_next_piece_preview(
-    mut gizmos: Gizmos,
-    next_piece: Res<NextPiece>,
-) {
+fn render_next_piece_preview(mut gizmos: Gizmos, next_piece: Res<NextPiece>) {
     // Position the preview to the left side of the main grid below the score UI.
     let preview_pivot = Vec3::new(-10.0, 0.0, -2.0);
     let shapes = next_piece.0.get_shape_blocks();
@@ -131,10 +141,7 @@ fn render_next_piece_preview(
 
     for pos in shapes {
         let global_pos = preview_pivot + Vec3::new(pos.x as f32, pos.y as f32, pos.z as f32);
-        gizmos.cuboid(
-            Transform::from_translation(global_pos),
-            color,
-        );
+        gizmos.cuboid(Transform::from_translation(global_pos), color);
     }
 }
 
@@ -152,9 +159,9 @@ fn setup(
         clear_sound: asset_server.load("sounds/clear.ogg"),
         bgm: asset_server.load("sounds/bgm.ogg"),
     };
-    
+
     // Start background music
-    commands.spawn(( 
+    commands.spawn((
         AudioPlayer::new(audio_handles.bgm.clone()),
         PlaybackSettings::LOOP,
     ));
@@ -167,11 +174,12 @@ fn setup(
     // Camera
     commands.spawn((
         Camera3d::default(),
-        Transform::from_xyz(center_x, 25.0, center_z).looking_at(Vec3::new(center_x, 0.0, center_z), Vec3::NEG_Z),
+        Transform::from_xyz(center_x, 25.0, center_z)
+            .looking_at(Vec3::new(center_x, 0.0, center_z), Vec3::NEG_Z),
     ));
 
     // Light
-    commands.spawn(( 
+    commands.spawn((
         PointLight {
             intensity: 2000000.0, // Lumens, high for visibility
             range: 100.0,
@@ -179,7 +187,7 @@ fn setup(
         },
         Transform::from_xyz(10.0, 20.0, 10.0),
     ));
-    
+
     // Ambient light
     commands.insert_resource(AmbientLight {
         color: Color::WHITE,
@@ -191,7 +199,7 @@ fn setup(
     let grid_color = Color::srgb(0.2, 0.2, 0.2);
     for x in 0..GRID_WIDTH {
         for z in 0..GRID_DEPTH {
-             commands.spawn(( 
+            commands.spawn((
                 Mesh3d(meshes.add(Cuboid::new(0.9, 0.1, 0.9))),
                 MeshMaterial3d(materials.add(StandardMaterial {
                     base_color: grid_color,
@@ -201,9 +209,9 @@ fn setup(
             ));
         }
     }
-    
+
     // UI Setup
-    commands.spawn(( 
+    commands.spawn((
         Text::new("Score: 0"),
         Node {
             position_type: PositionType::Absolute,
@@ -213,8 +221,8 @@ fn setup(
         },
         ScoreText,
     ));
-    
-    commands.spawn(( 
+
+    commands.spawn((
         Text::new("Next: "),
         Node {
             position_type: PositionType::Absolute,
@@ -225,7 +233,7 @@ fn setup(
         NextPieceText,
     ));
 
-    commands.spawn(( 
+    commands.spawn((
         Text::new("Level: 1"),
         Node {
             position_type: PositionType::Absolute,
@@ -237,18 +245,18 @@ fn setup(
     ));
 
     // Initial instruction
-    commands.spawn(( 
+    commands.spawn((
         Text::new("WASD/Arrows: Move | Q/E/R: Rotate (+Shift: Reverse) | Space: Drop | P: Pause"),
         Node {
-             position_type: PositionType::Absolute,
-             bottom: Val::Px(10.0),
-             left: Val::Px(10.0),
-             ..default()
+            position_type: PositionType::Absolute,
+            bottom: Val::Px(10.0),
+            left: Val::Px(10.0),
+            ..default()
         },
     ));
 
     // Layer Visualization Container
-    commands.spawn(( 
+    commands.spawn((
         Node {
             position_type: PositionType::Absolute,
             right: Val::Px(10.0),
@@ -276,45 +284,51 @@ fn spawn_tetromino(
         return;
     }
 
-        let piece_type = next_piece.0;
-        next_piece.0 = get_random_piece();
-        
-        let start_pos = IVec3::new(GRID_WIDTH / 2, GRID_HEIGHT, GRID_DEPTH / 2);
-        let shapes = piece_type.get_shape_blocks();
-        
-        // Check game over
-        if !can_place(&shapes, start_pos, &game_grid) {
-             next_piece_state.set(GameState::GameOver);
-             return;
-        }
-    
-        commands.spawn((
-            Tetromino {
-                piece_type,
-                positions: shapes,
-                pivot: start_pos,
-                color: piece_type.get_color(),
-            },
-            ActiveBlock,
-        ));
+    let piece_type = next_piece.0;
+    next_piece.0 = get_random_piece();
+
+    let start_pos = IVec3::new(GRID_WIDTH / 2, GRID_HEIGHT, GRID_DEPTH / 2);
+    let shapes = piece_type.get_shape_blocks();
+
+    // Check game over
+    if !can_place(&shapes, start_pos, &game_grid) {
+        next_piece_state.set(GameState::GameOver);
+        return;
     }
-    /// Renders the currently active (falling) tetromino using wireframes.
-fn tetromino_render_active(
-    mut gizmos: Gizmos,
-    query: Query<&Tetromino, With<ActiveBlock>>,
-) {
+
+    commands.spawn((
+        Tetromino {
+            piece_type,
+            positions: shapes,
+            pivot: start_pos,
+            color: piece_type.get_color(),
+        },
+        ActiveBlock,
+    ));
+}
+/// Renders the currently active (falling) tetromino using wireframes.
+fn tetromino_render_active(mut gizmos: Gizmos, query: Query<&Tetromino, With<ActiveBlock>>) {
     for tetromino in &query {
         for pos in &tetromino.positions {
             let global_pos = tetromino.pivot + *pos;
             // Draw wireframe box
             gizmos.cuboid(
-                Transform::from_translation(Vec3::new(global_pos.x as f32, global_pos.y as f32, global_pos.z as f32)),
+                Transform::from_translation(Vec3::new(
+                    global_pos.x as f32,
+                    global_pos.y as f32,
+                    global_pos.z as f32,
+                )),
                 Color::WHITE,
             );
-             // Make it look "wired" by adding an inner cross or something if needed, but cuboid edges is what "wireframe" usually means.
-             // To make it distinct, we can use the tetromino color for the wire.
-             gizmos.cuboid(
-                Transform::from_translation(Vec3::new(global_pos.x as f32, global_pos.y as f32, global_pos.z as f32)).with_scale(Vec3::splat(0.95)),
+            // Make it look "wired" by adding an inner cross or something if needed, but cuboid edges is what "wireframe" usually means.
+            // To make it distinct, we can use the tetromino color for the wire.
+            gizmos.cuboid(
+                Transform::from_translation(Vec3::new(
+                    global_pos.x as f32,
+                    global_pos.y as f32,
+                    global_pos.z as f32,
+                ))
+                .with_scale(Vec3::splat(0.95)),
                 tetromino.color,
             );
         }
@@ -326,7 +340,7 @@ fn render_boundaries(mut gizmos: Gizmos) {
     let w = GRID_WIDTH as f32;
     let h = GRID_HEIGHT as f32;
     let d = GRID_DEPTH as f32;
-    
+
     let grid_color = Color::srgb(0.3, 0.3, 0.3);
     let border_color = Color::srgb(0.6, 0.6, 0.6);
 
@@ -334,25 +348,57 @@ fn render_boundaries(mut gizmos: Gizmos) {
     for x in 0..=GRID_WIDTH {
         let x_f = x as f32 - 0.5;
         // Front and back walls
-        gizmos.line(Vec3::new(x_f, -0.5, -0.5), Vec3::new(x_f, h - 0.5, -0.5), grid_color);
-        gizmos.line(Vec3::new(x_f, -0.5, d - 0.5), Vec3::new(x_f, h - 0.5, d - 0.5), grid_color);
+        gizmos.line(
+            Vec3::new(x_f, -0.5, -0.5),
+            Vec3::new(x_f, h - 0.5, -0.5),
+            grid_color,
+        );
+        gizmos.line(
+            Vec3::new(x_f, -0.5, d - 0.5),
+            Vec3::new(x_f, h - 0.5, d - 0.5),
+            grid_color,
+        );
     }
     for z in 0..=GRID_DEPTH {
         let z_f = z as f32 - 0.5;
         // Left and right walls
-        gizmos.line(Vec3::new(-0.5, -0.5, z_f), Vec3::new(-0.5, h - 0.5, z_f), grid_color);
-        gizmos.line(Vec3::new(w - 0.5, -0.5, z_f), Vec3::new(w - 0.5, h - 0.5, z_f), grid_color);
+        gizmos.line(
+            Vec3::new(-0.5, -0.5, z_f),
+            Vec3::new(-0.5, h - 0.5, z_f),
+            grid_color,
+        );
+        gizmos.line(
+            Vec3::new(w - 0.5, -0.5, z_f),
+            Vec3::new(w - 0.5, h - 0.5, z_f),
+            grid_color,
+        );
     }
 
     // Horizontal rings at each y level
     for y in 0..=GRID_HEIGHT {
         let y_f = y as f32 - 0.5;
         let color = if y % 5 == 0 { border_color } else { grid_color };
-        
-        gizmos.line(Vec3::new(-0.5, y_f, -0.5), Vec3::new(w - 0.5, y_f, -0.5), color);
-        gizmos.line(Vec3::new(w - 0.5, y_f, -0.5), Vec3::new(w - 0.5, y_f, d - 0.5), color);
-        gizmos.line(Vec3::new(w - 0.5, y_f, d - 0.5), Vec3::new(-0.5, y_f, d - 0.5), color);
-        gizmos.line(Vec3::new(-0.5, y_f, d - 0.5), Vec3::new(-0.5, y_f, -0.5), color);
+
+        gizmos.line(
+            Vec3::new(-0.5, y_f, -0.5),
+            Vec3::new(w - 0.5, y_f, -0.5),
+            color,
+        );
+        gizmos.line(
+            Vec3::new(w - 0.5, y_f, -0.5),
+            Vec3::new(w - 0.5, y_f, d - 0.5),
+            color,
+        );
+        gizmos.line(
+            Vec3::new(w - 0.5, y_f, d - 0.5),
+            Vec3::new(-0.5, y_f, d - 0.5),
+            color,
+        );
+        gizmos.line(
+            Vec3::new(-0.5, y_f, d - 0.5),
+            Vec3::new(-0.5, y_f, -0.5),
+            color,
+        );
     }
 }
 
@@ -368,13 +414,14 @@ fn tetromino_movement(
 ) {
     if let Some(mut tetromino) = query.iter_mut().next() {
         config.move_timer.tick(time.delta());
-        
+
         if config.move_timer.is_finished() {
             let mut move_delta = IVec3::ZERO;
             if keyboard_input.pressed(KeyCode::ArrowLeft) || keyboard_input.pressed(KeyCode::KeyA) {
                 move_delta.x -= 1;
             }
-            if keyboard_input.pressed(KeyCode::ArrowRight) || keyboard_input.pressed(KeyCode::KeyD) {
+            if keyboard_input.pressed(KeyCode::ArrowRight) || keyboard_input.pressed(KeyCode::KeyD)
+            {
                 move_delta.x += 1;
             }
             if keyboard_input.pressed(KeyCode::ArrowUp) || keyboard_input.pressed(KeyCode::KeyW) {
@@ -386,13 +433,20 @@ fn tetromino_movement(
 
             // Movement
             if move_delta != IVec3::ZERO {
-                if can_place(&tetromino.positions, tetromino.pivot + move_delta, &game_grid) {
+                if can_place(
+                    &tetromino.positions,
+                    tetromino.pivot + move_delta,
+                    &game_grid,
+                ) {
                     tetromino.pivot += move_delta;
-                    commands.spawn((AudioPlayer::new(audio.move_sound.clone()), PlaybackSettings::DESPAWN));
+                    commands.spawn((
+                        AudioPlayer::new(audio.move_sound.clone()),
+                        PlaybackSettings::DESPAWN,
+                    ));
                 }
             }
         }
-        
+
         let shift = keyboard_input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]);
         let forward = !shift;
 
@@ -400,20 +454,29 @@ fn tetromino_movement(
         if keyboard_input.just_pressed(KeyCode::KeyQ) {
             // Rotate Y
             if try_rotate_with_kicks(&mut tetromino, IVec3::Y, forward, &game_grid) {
-                commands.spawn((AudioPlayer::new(audio.rotate_sound.clone()), PlaybackSettings::DESPAWN));
+                commands.spawn((
+                    AudioPlayer::new(audio.rotate_sound.clone()),
+                    PlaybackSettings::DESPAWN,
+                ));
             }
         }
         if keyboard_input.just_pressed(KeyCode::KeyE) {
-             // Rotate X
-             if try_rotate_with_kicks(&mut tetromino, IVec3::X, forward, &game_grid) {
-                commands.spawn((AudioPlayer::new(audio.rotate_sound.clone()), PlaybackSettings::DESPAWN));
-             }
+            // Rotate X
+            if try_rotate_with_kicks(&mut tetromino, IVec3::X, forward, &game_grid) {
+                commands.spawn((
+                    AudioPlayer::new(audio.rotate_sound.clone()),
+                    PlaybackSettings::DESPAWN,
+                ));
+            }
         }
-         if keyboard_input.just_pressed(KeyCode::KeyR) {
-             // Rotate Z
-             if try_rotate_with_kicks(&mut tetromino, IVec3::Z, forward, &game_grid) {
-                commands.spawn((AudioPlayer::new(audio.rotate_sound.clone()), PlaybackSettings::DESPAWN));
-             }
+        if keyboard_input.just_pressed(KeyCode::KeyR) {
+            // Rotate Z
+            if try_rotate_with_kicks(&mut tetromino, IVec3::Z, forward, &game_grid) {
+                commands.spawn((
+                    AudioPlayer::new(audio.rotate_sound.clone()),
+                    PlaybackSettings::DESPAWN,
+                ));
+            }
         }
 
         // Hard Drop
@@ -421,10 +484,13 @@ fn tetromino_movement(
             let new_pivot = calculate_hard_drop(&tetromino, &game_grid);
             if new_pivot != tetromino.pivot {
                 tetromino.pivot = new_pivot;
-                commands.spawn((AudioPlayer::new(audio.drop_sound.clone()), PlaybackSettings::DESPAWN));
+                commands.spawn((
+                    AudioPlayer::new(audio.drop_sound.clone()),
+                    PlaybackSettings::DESPAWN,
+                ));
             }
             // Lock immediately
-            config.fall_timer.reset(); 
+            config.fall_timer.reset();
         }
     }
 }
@@ -466,13 +532,15 @@ fn render_landed_grid(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut indicators: ResMut<LandedIndicators>,
-    query: Query<Entity, With<LandedBlock>>, 
+    query: Query<Entity, With<LandedBlock>>,
 ) {
-    if !dirty.0 { return; }
+    if !dirty.0 {
+        return;
+    }
     for entity in &query {
         commands.entity(entity).despawn();
     }
-    
+
     // Clear indicators cache
     indicators.0.clear();
 
@@ -483,10 +551,10 @@ fn render_landed_grid(
                 if let Some(piece_type) = game_grid.get(x, y, z) {
                     // 1. Solid Level Color Block
                     let level_color = Color::hsl((y as f32 * 40.0) % 360.0, 0.9, 0.5);
-                    commands.spawn(( 
+                    commands.spawn((
                         Mesh3d(meshes.add(Cuboid::new(1.0, 1.0, 1.0))),
                         MeshMaterial3d(materials.add(StandardMaterial {
-                            base_color: level_color, 
+                            base_color: level_color,
                             ..default()
                         })),
                         Transform::from_xyz(x as f32, y as f32, z as f32),
@@ -494,7 +562,8 @@ fn render_landed_grid(
                     ));
                     let piece_color = piece_type.get_color();
                     indicators.0.push((
-                        Transform::from_xyz(x as f32, y as f32, z as f32).with_scale(Vec3::splat(1.01)),
+                        Transform::from_xyz(x as f32, y as f32, z as f32)
+                            .with_scale(Vec3::splat(1.01)),
                         piece_color,
                     ));
                 }
@@ -504,10 +573,7 @@ fn render_landed_grid(
 }
 
 /// Renders tetromino piece type indicators on landed blocks using gizmos.
-fn render_cached_indicators(
-    mut gizmos: Gizmos,
-    indicators: Res<LandedIndicators>,
-) {
+fn render_cached_indicators(mut gizmos: Gizmos, indicators: Res<LandedIndicators>) {
     for (transform, color) in &indicators.0 {
         gizmos.cuboid(*transform, *color);
     }
@@ -526,10 +592,15 @@ fn check_layers(
     if layers_cleared > 0 {
         if stats.add_layers(layers_cleared) {
             let new_speed = stats.get_fall_speed();
-            config.fall_timer.set_duration(Duration::from_secs_f32(new_speed));
+            config
+                .fall_timer
+                .set_duration(Duration::from_secs_f32(new_speed));
             println!("Level Up! Level: {}, Speed: {:.1}s", stats.level, new_speed);
         }
-        commands.spawn((AudioPlayer::new(audio.clear_sound.clone()), PlaybackSettings::DESPAWN));
+        commands.spawn((
+            AudioPlayer::new(audio.clear_sound.clone()),
+            PlaybackSettings::DESPAWN,
+        ));
     }
 }
 
@@ -552,8 +623,11 @@ fn pause_input(
 fn ui_system(
     stats: Res<GameStats>,
     next: Res<NextPiece>,
-    mut score_query: Query<&mut Text, (With<ScoreText>, Without<NextPieceText>, Without<LevelText>) >,
-    mut next_query: Query<&mut Text, (With<NextPieceText>, Without<LevelText>) >,
+    mut score_query: Query<
+        &mut Text,
+        (With<ScoreText>, Without<NextPieceText>, Without<LevelText>),
+    >,
+    mut next_query: Query<&mut Text, (With<NextPieceText>, Without<LevelText>)>,
     mut level_query: Query<&mut Text, With<LevelText>>,
 ) {
     for mut text in &mut score_query {
@@ -569,7 +643,7 @@ fn ui_system(
 
 /// Spawns Game Over UI.
 fn game_over_setup(mut commands: Commands) {
-    commands.spawn(( 
+    commands.spawn((
         Text::new("GAME OVER\nPress R to Restart"),
         Node {
             position_type: PositionType::Absolute,
@@ -602,15 +676,15 @@ fn game_over_input(
         dirty.0 = true;
         config.fall_timer.set_duration(Duration::from_secs_f32(0.8));
         for entity in &active_query {
-            commands.entity(entity).despawn();  
+            commands.entity(entity).despawn();
         }
-        for entity in &landed_query { 
-            commands.entity(entity).despawn(); 
+        for entity in &landed_query {
+            commands.entity(entity).despawn();
         }
-        for entity in &text_query { 
-            commands.entity(entity).despawn(); 
+        for entity in &text_query {
+            commands.entity(entity).despawn();
         }
-        
+
         next_state.set(GameState::Playing);
     }
 }
@@ -628,54 +702,70 @@ fn update_layer_visualization(
     dirty: Res<DirtyGrid>,
     query: Query<(Entity, Option<&Children>), With<LayerVisualizer>>,
 ) {
-    if !dirty.0 { return; }
+    if !dirty.0 {
+        return;
+    }
     if let Some((container, children)) = query.iter().next() {
         if let Some(children) = children {
             for &child in children {
                 commands.entity(child).despawn();
             }
         }
-                for y in 0..GRID_HEIGHT {
-                    // Always show Layer 0, others only if they have locked cells
-                    if y == 0 || !game_grid.is_layer_empty(y) {
-                        commands.entity(container).with_children(|parent| {
-                            parent.spawn((
+        for y in 0..GRID_HEIGHT {
+            // Always show Layer 0, others only if they have locked cells
+            if y == 0 || !game_grid.is_layer_empty(y) {
+                commands.entity(container).with_children(|parent| {
+                    parent
+                        .spawn((
+                            Node {
+                                width: Val::Px(100.0),
+                                height: Val::Px(100.0),
+                                margin: UiRect::all(Val::Px(5.0)),
+                                flex_direction: FlexDirection::Column,
+                                border: UiRect::all(Val::Px(1.0)),
+                                ..default()
+                            },
+                            BorderColor::all(Color::WHITE),
+                        ))
+                        .with_children(|grid_parent| {
+                            grid_parent.spawn((
+                                Text::new(format!("Layer {}", y)),
                                 Node {
-                                    width: Val::Px(100.0), height: Val::Px(100.0),
-                                    margin: UiRect::all(Val::Px(5.0)),
-                                    flex_direction: FlexDirection::Column,
-                                    border: UiRect::all(Val::Px(1.0)),
+                                    height: Val::Px(15.0),
                                     ..default()
                                 },
-                                BorderColor::all(Color::WHITE),
-                            )).with_children(|grid_parent| {
-                                grid_parent.spawn((
-                                    Text::new(format!("Layer {}", y)),
-                                    Node { height: Val::Px(15.0), ..default() }
-                                ));
-                                grid_parent.spawn(Node {
+                            ));
+                            grid_parent
+                                .spawn(Node {
                                     display: Display::Grid,
                                     grid_template_columns: RepeatedGridTrack::px(8, 10.0),
                                     grid_template_rows: RepeatedGridTrack::px(8, 10.0),
                                     ..default()
-                                }).with_children(|cells_parent| {
+                                })
+                                .with_children(|cells_parent| {
                                     for z in 0..GRID_DEPTH {
                                         for x in 0..GRID_WIDTH {
                                             let color = if let Some(pt) = game_grid.get(x, y, z) {
                                                 pt.get_color()
-                                            } else { Color::NONE };
+                                            } else {
+                                                Color::NONE
+                                            };
                                             cells_parent.spawn((
-                                                Node { width: Val::Px(8.0), height: Val::Px(8.0), border: UiRect::all(Val::Px(0.5)), ..default() },
+                                                Node {
+                                                    width: Val::Px(8.0),
+                                                    height: Val::Px(8.0),
+                                                    border: UiRect::all(Val::Px(0.5)),
+                                                    ..default()
+                                                },
                                                 BackgroundColor(color),
                                                 BorderColor::all(Color::srgb(0.2, 0.2, 0.2)),
                                             ));
                                         }
                                     }
                                 });
-                            });
                         });
-                    }
-                }
-        
+                });
+            }
+        }
     }
 }

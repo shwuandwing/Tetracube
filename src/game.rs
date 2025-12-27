@@ -7,8 +7,14 @@ pub const GRID_DEPTH: i32 = 8;
 /// The types of tetromino pieces available in the game, including standard 2D and new 3D shapes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum TetrominoType {
-    I, O, T, Z, L,
-    Tripod, ScrewL, ScrewR,
+    I,
+    O,
+    T,
+    Z,
+    L,
+    Tripod,
+    ScrewL,
+    ScrewR,
 }
 
 impl TetrominoType {
@@ -16,14 +22,54 @@ impl TetrominoType {
     pub fn get_shape_blocks(&self) -> Vec<IVec3> {
         match self {
             // Defined in X/Z plane (y=0)
-            TetrominoType::I => vec![IVec3::new(0,0,0), IVec3::new(-1,0,0), IVec3::new(1,0,0), IVec3::new(2,0,0)],
-            TetrominoType::O => vec![IVec3::new(0,0,0), IVec3::new(1,0,0), IVec3::new(0,0,1), IVec3::new(1,0,1)],
-            TetrominoType::T => vec![IVec3::new(0,0,0), IVec3::new(-1,0,0), IVec3::new(1,0,0), IVec3::new(0,0,1)],
-            TetrominoType::Z => vec![IVec3::new(0,0,0), IVec3::new(1,0,0), IVec3::new(0,0,1), IVec3::new(-1,0,1)],
-            TetrominoType::L => vec![IVec3::new(0,0,0), IVec3::new(-1,0,0), IVec3::new(1,0,0), IVec3::new(1,0,1)],
-            TetrominoType::Tripod => vec![IVec3::new(0,0,0), IVec3::new(1,0,0), IVec3::new(0,1,0), IVec3::new(0,0,1)],
-            TetrominoType::ScrewL => vec![IVec3::new(0,0,0), IVec3::new(1,0,0), IVec3::new(1,1,0), IVec3::new(1,1,1)],
-            TetrominoType::ScrewR => vec![IVec3::new(0,0,0), IVec3::new(1,0,0), IVec3::new(1,1,0), IVec3::new(1,1,-1)],
+            TetrominoType::I => vec![
+                IVec3::new(0, 0, 0),
+                IVec3::new(-1, 0, 0),
+                IVec3::new(1, 0, 0),
+                IVec3::new(2, 0, 0),
+            ],
+            TetrominoType::O => vec![
+                IVec3::new(0, 0, 0),
+                IVec3::new(1, 0, 0),
+                IVec3::new(0, 0, 1),
+                IVec3::new(1, 0, 1),
+            ],
+            TetrominoType::T => vec![
+                IVec3::new(0, 0, 0),
+                IVec3::new(-1, 0, 0),
+                IVec3::new(1, 0, 0),
+                IVec3::new(0, 0, 1),
+            ],
+            TetrominoType::Z => vec![
+                IVec3::new(0, 0, 0),
+                IVec3::new(1, 0, 0),
+                IVec3::new(0, 0, 1),
+                IVec3::new(-1, 0, 1),
+            ],
+            TetrominoType::L => vec![
+                IVec3::new(0, 0, 0),
+                IVec3::new(-1, 0, 0),
+                IVec3::new(1, 0, 0),
+                IVec3::new(1, 0, 1),
+            ],
+            TetrominoType::Tripod => vec![
+                IVec3::new(0, 0, 0),
+                IVec3::new(1, 0, 0),
+                IVec3::new(0, 1, 0),
+                IVec3::new(0, 0, 1),
+            ],
+            TetrominoType::ScrewL => vec![
+                IVec3::new(0, 0, 0),
+                IVec3::new(1, 0, 0),
+                IVec3::new(1, 1, 0),
+                IVec3::new(1, 1, 1),
+            ],
+            TetrominoType::ScrewR => vec![
+                IVec3::new(0, 0, 0),
+                IVec3::new(1, 0, 0),
+                IVec3::new(1, 1, 0),
+                IVec3::new(1, 1, -1),
+            ],
         }
     }
 
@@ -59,7 +105,7 @@ pub struct DirtyGrid(pub bool);
 #[derive(Resource)]
 pub struct GameGrid {
     // Stores the type of the block at x, y, z. None means empty.
-    pub grid: Vec<Option<TetrominoType>>, 
+    pub grid: Vec<Option<TetrominoType>>,
 }
 
 impl GameGrid {
@@ -87,10 +133,10 @@ impl GameGrid {
         }
         y < GRID_HEIGHT && self.get(x, y, z).is_some()
     }
-    
+
     /// Checks if a position is within the horizontal and bottom boundaries of the grid.
     pub fn is_valid_pos(&self, x: i32, y: i32, z: i32) -> bool {
-         x >= 0 && x < GRID_WIDTH && z >= 0 && z < GRID_DEPTH && y >= 0
+        x >= 0 && x < GRID_WIDTH && z >= 0 && z < GRID_DEPTH && y >= 0
     }
 
     /// Sets the piece type at a specific grid coordinate.
@@ -99,26 +145,34 @@ impl GameGrid {
             self.grid[idx] = Some(piece_type);
         }
     }
-    
+
     /// Gets the piece type at a specific grid coordinate, if any.
     pub fn get(&self, x: i32, y: i32, z: i32) -> Option<TetrominoType> {
-         Self::index(x, y, z).and_then(|idx| self.grid[idx])
+        Self::index(x, y, z).and_then(|idx| self.grid[idx])
     }
 
     /// Checks if a horizontal layer at height y is full.
     pub fn is_layer_full(&self, y: i32) -> bool {
         let layer_size = (GRID_WIDTH * GRID_DEPTH) as usize;
         let start = y as usize * layer_size;
-        if start >= self.grid.len() { return false; }
-        self.grid[start..start + layer_size].iter().all(|c| c.is_some())
+        if start >= self.grid.len() {
+            return false;
+        }
+        self.grid[start..start + layer_size]
+            .iter()
+            .all(|c| c.is_some())
     }
 
     /// Checks if a horizontal layer at height y is completely empty.
     pub fn is_layer_empty(&self, y: i32) -> bool {
         let layer_size = (GRID_WIDTH * GRID_DEPTH) as usize;
         let start = y as usize * layer_size;
-        if start >= self.grid.len() { return true; }
-        self.grid[start..start + layer_size].iter().all(|c| c.is_none())
+        if start >= self.grid.len() {
+            return true;
+        }
+        self.grid[start..start + layer_size]
+            .iter()
+            .all(|c| c.is_none())
     }
 
     /// Clears any 2D horizontal layers that are completely filled with blocks.
@@ -136,7 +190,8 @@ impl GameGrid {
                 if read_y != write_y {
                     let src_start = read_y as usize * layer_size;
                     let dst_start = write_y as usize * layer_size;
-                    self.grid.copy_within(src_start..src_start + layer_size, dst_start);
+                    self.grid
+                        .copy_within(src_start..src_start + layer_size, dst_start);
                 }
                 write_y += 1;
             }
@@ -150,7 +205,7 @@ impl GameGrid {
         layers_cleared
     }
 
-    /// Permanently locks a tetromino's blocks into the grid. 
+    /// Permanently locks a tetromino's blocks into the grid.
     /// Returns true if any part of the piece is at or above GRID_HEIGHT (Game Over).
     pub fn lock_tetromino(&mut self, tetromino: &Tetromino, dirty: &mut DirtyGrid) -> bool {
         let mut game_over = false;
@@ -167,15 +222,17 @@ impl GameGrid {
 }
 
 /// Attempts to rotate a tetromino around a given cardinal axis.
-/// If the standard rotation is blocked, it tries a sequence of "kicks" (nudges) 
+/// If the standard rotation is blocked, it tries a sequence of "kicks" (nudges)
 /// to find a valid nearby position. Returns true if successful.
 pub fn try_rotate_with_kicks(
-    tetromino: &mut Tetromino, 
-    axis: IVec3, 
-    forward: bool, 
-    grid: &GameGrid
+    tetromino: &mut Tetromino,
+    axis: IVec3,
+    forward: bool,
+    grid: &GameGrid,
 ) -> bool {
-    let new_positions: Vec<IVec3> = tetromino.positions.iter()
+    let new_positions: Vec<IVec3> = tetromino
+        .positions
+        .iter()
         .map(|p| rotate_point(*p, axis, forward))
         .collect();
 
@@ -184,7 +241,7 @@ pub fn try_rotate_with_kicks(
         IVec3::ZERO,
         IVec3::new(0, 1, 0), // Up (Floor kick)
         IVec3::new(0, 2, 0), // Up 2
-        IVec3::new(1, 0, 0), 
+        IVec3::new(1, 0, 0),
         IVec3::new(-1, 0, 0),
         IVec3::new(0, 0, 1),
         IVec3::new(0, 0, -1),
@@ -218,7 +275,8 @@ pub fn rotate_point(point: IVec3, axis: IVec3, forward: bool) -> IVec3 {
 pub fn can_place(positions: &[IVec3], pivot: IVec3, grid: &GameGrid) -> bool {
     positions.iter().all(|&pos| {
         let global = pivot + pos;
-        grid.is_valid_pos(global.x, global.y, global.z) && !grid.is_occupied(global.x, global.y, global.z)
+        grid.is_valid_pos(global.x, global.y, global.z)
+            && !grid.is_occupied(global.x, global.y, global.z)
     })
 }
 
@@ -266,10 +324,10 @@ mod tests {
     fn test_grid_indexing() {
         let idx = GameGrid::index(0, 0, 0);
         assert_eq!(idx, Some(0));
-        
+
         let idx_max = GameGrid::index(GRID_WIDTH - 1, GRID_HEIGHT - 1, GRID_DEPTH - 1);
         assert!(idx_max.is_some());
-        
+
         let idx_oob = GameGrid::index(-1, 0, 0);
         assert_eq!(idx_oob, None);
     }
@@ -278,19 +336,19 @@ mod tests {
     fn test_grid_occupancy() {
         let mut grid = GameGrid::new();
         assert!(!grid.is_occupied(0, 0, 0));
-        
+
         grid.set(0, 0, 0, TetrominoType::I);
         assert!(grid.is_occupied(0, 0, 0));
-        
+
         // Out of bounds (negative or horizontal) is occupied
         assert!(grid.is_occupied(-1, 5, 2));
         assert!(grid.is_occupied(GRID_WIDTH, 5, 2));
         assert!(grid.is_occupied(0, -1, 0));
-        
+
         // Above grid is NOT occupied (to allow spawning/rotating)
         assert!(!grid.is_occupied(0, GRID_HEIGHT, 0));
         assert!(!grid.is_occupied(GRID_WIDTH - 1, GRID_HEIGHT + 5, GRID_DEPTH - 1));
-        
+
         // Horizontal OOB still applies even if above grid height
         assert!(grid.is_occupied(-1, GRID_HEIGHT, 0));
     }
@@ -298,7 +356,7 @@ mod tests {
     #[test]
     fn test_rotation_all_axes() {
         let p = IVec3::new(1, 2, 3);
-        
+
         // X Axis: (x, y, z) -> (x, -z, y)
         assert_eq!(rotate_point(p, IVec3::X, true), IVec3::new(1, -3, 2));
         assert_eq!(rotate_point(p, IVec3::X, false), IVec3::new(1, 3, -2));
@@ -340,7 +398,7 @@ mod tests {
             pivot: IVec3::new(0, 0, 0),
             color: Color::WHITE,
         };
-        
+
         // Not game over
         let game_over = grid.lock_tetromino(&tetromino, &mut dirty);
         assert!(!game_over);
@@ -362,7 +420,7 @@ mod tests {
     fn test_grid_get_set() {
         let mut grid = GameGrid::new();
         grid.set(1, 2, 3, TetrominoType::T);
-        
+
         assert_eq!(grid.get(1, 2, 3), Some(TetrominoType::T));
         assert!(grid.get(0, 0, 0).is_none());
         assert!(grid.get(-1, -1, -1).is_none());
@@ -384,7 +442,7 @@ mod tests {
         let cleared = grid.clear_full_layers(&mut dirty);
         assert_eq!(cleared, 1);
         assert!(dirty.0);
-        
+
         // Block at y=1 should have dropped to y=0
         assert_eq!(grid.get(0, 0, 0), Some(TetrominoType::Z));
         // Layer y=1 should now be empty except for what dropped (or if it was already empty)
@@ -408,7 +466,7 @@ mod tests {
 
         let cleared = grid.clear_full_layers(&mut dirty);
         assert_eq!(cleared, 2);
-        
+
         // Block at y=2 should have dropped to y=0
         assert_eq!(grid.get(0, 0, 0), Some(TetrominoType::L));
         assert!(grid.get(0, 1, 0).is_none());
@@ -424,34 +482,34 @@ mod tests {
             pivot: IVec3::new(2, 0, 2),
             color: Color::WHITE,
         };
-        
+
         // Rotate around X axis such that it would go below floor if not kicked
         // Before: (2,0,2), (2,1,2)
         // Rotate X (forward): (x, -z, y) relative
         // (0,0,0) -> (0,0,0)
         // (0,1,0) -> (0,0,1)
-        // This specific rotation doesn't hit floor. 
-        
+        // This specific rotation doesn't hit floor.
+
         // Let's try one that DOES hit the floor.
         tetromino.positions = vec![IVec3::new(0, 0, 0), IVec3::new(0, 0, 1)];
         // Rotate around X (inverse): (x, z, -y) relative
         // (0,0,1) -> (0,1,0) - No.
-        
+
         // Actually, let's just test that a kick happens if needed.
         // Place block that blocks normal rotation, but allows a kicked one.
         let mut grid = GameGrid::new();
         grid.set(2, 0, 3, TetrominoType::I); // Blocks (0,0,1) relative to (2,0,2)
-        
+
         let mut tetromino = Tetromino {
             piece_type: TetrominoType::I,
             positions: vec![IVec3::new(0, 0, 0), IVec3::new(0, 1, 0)],
             pivot: IVec3::new(2, 0, 2),
             color: Color::WHITE,
         };
-        
+
         // Rotate Y (forward): (z, y, -x) relative
         // (0,1,0) -> (0,1,0) - No change in y.
-        
+
         // Simple case: try_rotate_with_kicks should return true if valid.
         assert!(try_rotate_with_kicks(&mut tetromino, IVec3::Y, true, &grid));
     }
@@ -465,7 +523,7 @@ mod tests {
             pivot: IVec3::new(0, 10, 0),
             color: Color::WHITE,
         };
-        
+
         // Should drop to y=0
         let drop_pivot = calculate_hard_drop(&tetromino, &grid);
         assert_eq!(drop_pivot.y, 0);
@@ -496,11 +554,15 @@ mod tests {
 
     #[test]
     fn test_new_3d_tetromino_shapes() {
-        let types = [TetrominoType::Tripod, TetrominoType::ScrewL, TetrominoType::ScrewR];
+        let types = [
+            TetrominoType::Tripod,
+            TetrominoType::ScrewL,
+            TetrominoType::ScrewR,
+        ];
         for t in types {
             let shapes = t.get_shape_blocks();
             assert_eq!(shapes.len(), 4, "Tetromino {:?} must have 4 blocks", t);
-            
+
             let color = t.get_color();
             // Just verify it doesn't panic and returns something
             assert!(color.to_linear().to_vec4().length() > 0.0);
@@ -546,7 +608,7 @@ mod tests {
     #[test]
     fn test_try_rotate_with_kicks_wall() {
         let grid = GameGrid::new();
-        
+
         // Let's use a piece that MUST kick.
         let mut tetromino = Tetromino {
             piece_type: TetrominoType::I,
@@ -554,7 +616,7 @@ mod tests {
             pivot: IVec3::new(GRID_WIDTH - 1, 0, 0),
             color: Color::WHITE,
         };
-        
+
         // Let's put it at X=0 and rotate it to X=-1.
         tetromino.pivot = IVec3::new(0, 0, 0);
         // Rotate Z (forward): (0,1,0) -> (-1,0,0). OOB!
