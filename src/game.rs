@@ -239,14 +239,10 @@ impl GameStats {
 
     /// Adds cleared layers to the score and updates the level. Returns true if leveled up.
     pub fn add_layers(&mut self, layers: u32) -> bool {
-        if layers == 0 { return false; }
+        let old_level = self.level;
         self.score += layers * 100;
-        let new_level = (self.score / 500) + 1;
-        if new_level > self.level {
-            self.level = new_level;
-            return true;
-        }
-        false
+        self.level = (self.score / 500) + 1;
+        self.level > old_level
     }
 
     /// Calculates the current fall speed based on the level.
