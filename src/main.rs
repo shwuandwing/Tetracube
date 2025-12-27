@@ -619,7 +619,8 @@ fn clear_dirty_flag(mut dirty: ResMut<DirtyGrid>) {
     dirty.0 = false;
 }
 
-/// Updates the 2D layer visualization.
+/// Updates the 2D layer visualization panel on the right side of the screen.
+/// Redraws 2D representations for Layer 0 and any other layers containing locked blocks.
 fn update_layer_visualization(
     mut commands: Commands,
     game_grid: Res<GameGrid>,

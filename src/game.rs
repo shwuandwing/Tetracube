@@ -71,6 +71,7 @@ impl GameGrid {
     }
 
     /// Converts 3D grid coordinates into a flat vector index.
+    /// Returns None if coordinates are outside the grid boundaries.
     pub fn index(x: i32, y: i32, z: i32) -> Option<usize> {
         if x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT || z < 0 || z >= GRID_DEPTH {
             return None;
@@ -78,7 +79,8 @@ impl GameGrid {
         Some((y * GRID_WIDTH * GRID_DEPTH + z * GRID_WIDTH + x) as usize)
     }
 
-    /// Checks if a grid cell is occupied or out of horizontal/bottom bounds.
+    /// Checks if a grid cell is occupied by a landed block or is out of horizontal/bottom bounds.
+    /// Note: Positions above the grid height are not considered occupied.
     pub fn is_occupied(&self, x: i32, y: i32, z: i32) -> bool {
         if x < 0 || x >= GRID_WIDTH || z < 0 || z >= GRID_DEPTH || y < 0 {
             return true;
@@ -119,8 +121,9 @@ impl GameGrid {
         self.grid[start..start + layer_size].iter().all(|c| c.is_none())
     }
 
-    /// Clears full 2D horizontal layers and shifts remaining layers down in-place.
-    /// Returns the number of layers cleared.
+    /// Clears any 2D horizontal layers that are completely filled with blocks.
+    /// Remaining blocks above cleared layers are shifted down.
+    /// Returns the number of layers cleared and marks the grid as dirty.
     pub fn clear_full_layers(&mut self, dirty: &mut DirtyGrid) -> u32 {
         let layer_size = (GRID_WIDTH * GRID_DEPTH) as usize;
         let mut layers_cleared = 0;
@@ -147,7 +150,8 @@ impl GameGrid {
         layers_cleared
     }
 
-    /// Locks a tetromino into the grid. Returns true if it's a Game Over (locked above height).
+    /// Permanently locks a tetromino's blocks into the grid. 
+    /// Returns true if any part of the piece is at or above GRID_HEIGHT (Game Over).
     pub fn lock_tetromino(&mut self, tetromino: &Tetromino, dirty: &mut DirtyGrid) -> bool {
         let mut game_over = false;
         dirty.0 = true;
@@ -162,7 +166,9 @@ impl GameGrid {
     }
 }
 
-/// Tries to rotate a tetromino around a given axis, attempting wall and floor kicks if the rotation is blocked.
+/// Attempts to rotate a tetromino around a given cardinal axis.
+/// If the standard rotation is blocked, it tries a sequence of "kicks" (nudges) 
+/// to find a valid nearby position. Returns true if successful.
 pub fn try_rotate_with_kicks(
     tetromino: &mut Tetromino, 
     axis: IVec3, 
