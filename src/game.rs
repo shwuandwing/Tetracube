@@ -12,6 +12,7 @@ pub enum TetrominoType {
 
 #[derive(Component, Clone)]
 pub struct Tetromino {
+    pub piece_type: TetrominoType,
     pub positions: Vec<IVec3>, // Relative positions to the pivot
     pub pivot: IVec3,          // Global position
     pub color: Color,
@@ -22,8 +23,8 @@ pub struct DirtyGrid(pub bool);
 
 #[derive(Resource)]
 pub struct GameGrid {
-    // Stores the color of the block at x, y, z. None means empty.
-    pub grid: Vec<Option<Color>>, 
+    // Stores the type of the block at x, y, z. None means empty.
+    pub grid: Vec<Option<TetrominoType>>, 
 }
 
 impl GameGrid {
@@ -58,13 +59,13 @@ impl GameGrid {
          x >= 0 && x < GRID_WIDTH && z >= 0 && z < GRID_DEPTH && y >= 0
     }
 
-    pub fn set(&mut self, x: i32, y: i32, z: i32, color: Color) {
+    pub fn set(&mut self, x: i32, y: i32, z: i32, piece_type: TetrominoType) {
         if let Some(idx) = Self::index(x, y, z) {
-            self.grid[idx] = Some(color);
+            self.grid[idx] = Some(piece_type);
         }
     }
     
-    pub fn get(&self, x: i32, y: i32, z: i32) -> Option<Color> {
+    pub fn get(&self, x: i32, y: i32, z: i32) -> Option<TetrominoType> {
          if let Some(idx) = Self::index(x, y, z) {
             self.grid[idx]
         } else {
@@ -96,8 +97,8 @@ impl GameGrid {
                     for x in 0..GRID_WIDTH {
                         for z in 0..GRID_DEPTH {
                             let above = self.get(x, dy + 1, z);
-                            if let Some(c) = above {
-                                 self.set(x, dy, z, c);
+                            if let Some(t) = above {
+                                 self.set(x, dy, z, t);
                             } else {
                                  if let Some(idx) = Self::index(x, dy, z) {
                                      self.grid[idx] = None;
@@ -130,7 +131,7 @@ impl GameGrid {
             if global.y >= GRID_HEIGHT {
                 game_over = true;
             }
-            self.set(global.x, global.y, global.z, tetromino.color);
+            self.set(global.x, global.y, global.z, tetromino.piece_type);
         }
         game_over
     }
@@ -284,7 +285,7 @@ mod tests {
         let mut grid = GameGrid::new();
         assert!(!grid.is_occupied(0, 0, 0));
         
-        grid.set(0, 0, 0, Color::WHITE);
+        grid.set(0, 0, 0, TetrominoType::I);
         assert!(grid.is_occupied(0, 0, 0));
         
         // Out of bounds (negative or horizontal) is occupied
@@ -331,7 +332,7 @@ mod tests {
         assert!(!can_place(&positions, oob_pivot, &grid));
 
         // Collide with block
-        grid.set(3, 2, 2, Color::WHITE);
+        grid.set(3, 2, 2, TetrominoType::I);
         assert!(!can_place(&positions, pivot, &grid));
     }
 
@@ -340,6 +341,7 @@ mod tests {
         let mut grid = GameGrid::new();
         let mut dirty = DirtyGrid(false);
         let tetromino = Tetromino {
+            piece_type: TetrominoType::I,
             positions: vec![IVec3::ZERO],
             pivot: IVec3::new(0, 0, 0),
             color: Color::WHITE,
@@ -353,6 +355,7 @@ mod tests {
 
         // Game over (locks at or above GRID_HEIGHT)
         let tetromino_high = Tetromino {
+            piece_type: TetrominoType::I,
             positions: vec![IVec3::ZERO],
             pivot: IVec3::new(0, GRID_HEIGHT, 0),
             color: Color::WHITE,
@@ -364,11 +367,9 @@ mod tests {
     #[test]
     fn test_grid_get_set() {
         let mut grid = GameGrid::new();
-        let color = Color::srgb(1.0, 0.0, 0.0);
-        grid.set(1, 2, 3, color);
+        grid.set(1, 2, 3, TetrominoType::T);
         
-        // Use a small epsilon for color comparison or just compare if it's Some
-        assert!(grid.get(1, 2, 3).is_some());
+        assert_eq!(grid.get(1, 2, 3), Some(TetrominoType::T));
         assert!(grid.get(0, 0, 0).is_none());
         assert!(grid.get(-1, -1, -1).is_none());
     }
@@ -380,18 +381,18 @@ mod tests {
         // Fill a layer (y=0)
         for x in 0..GRID_WIDTH {
             for z in 0..GRID_DEPTH {
-                grid.set(x, 0, z, Color::WHITE);
+                grid.set(x, 0, z, TetrominoType::O);
             }
         }
         // Put one block at y=1
-        grid.set(0, 1, 0, Color::srgb(0.0, 1.0, 0.0));
+        grid.set(0, 1, 0, TetrominoType::Z);
 
         let cleared = grid.clear_full_layers(&mut dirty);
         assert_eq!(cleared, 1);
         assert!(dirty.0);
         
         // Block at y=1 should have dropped to y=0
-        assert!(grid.get(0, 0, 0).is_some());
+        assert_eq!(grid.get(0, 0, 0), Some(TetrominoType::Z));
         // Layer y=1 should now be empty except for what dropped (or if it was already empty)
         assert!(grid.get(1, 1, 1).is_none());
     }
@@ -404,18 +405,18 @@ mod tests {
         for y in 0..2 {
             for x in 0..GRID_WIDTH {
                 for z in 0..GRID_DEPTH {
-                    grid.set(x, y, z, Color::WHITE);
+                    grid.set(x, y, z, TetrominoType::O);
                 }
             }
         }
         // Put one block at y=2
-        grid.set(0, 2, 0, Color::WHITE);
+        grid.set(0, 2, 0, TetrominoType::L);
 
         let cleared = grid.clear_full_layers(&mut dirty);
         assert_eq!(cleared, 2);
         
         // Block at y=2 should have dropped to y=0
-        assert!(grid.get(0, 0, 0).is_some());
+        assert_eq!(grid.get(0, 0, 0), Some(TetrominoType::L));
         assert!(grid.get(0, 1, 0).is_none());
     }
 
@@ -424,6 +425,7 @@ mod tests {
         // I piece lying flat at y=0. Pivot at y=0.
         // Rotation might push some blocks to y=-1, requiring a floor kick (upwards).
         let mut tetromino = Tetromino {
+            piece_type: TetrominoType::I,
             positions: vec![IVec3::new(0, 0, 0), IVec3::new(0, 1, 0)], // Vertical 2-block piece
             pivot: IVec3::new(2, 0, 2),
             color: Color::WHITE,
@@ -444,9 +446,10 @@ mod tests {
         // Actually, let's just test that a kick happens if needed.
         // Place block that blocks normal rotation, but allows a kicked one.
         let mut grid = GameGrid::new();
-        grid.set(2, 0, 3, Color::WHITE); // Blocks (0,0,1) relative to (2,0,2)
+        grid.set(2, 0, 3, TetrominoType::I); // Blocks (0,0,1) relative to (2,0,2)
         
         let mut tetromino = Tetromino {
+            piece_type: TetrominoType::I,
             positions: vec![IVec3::new(0, 0, 0), IVec3::new(0, 1, 0)],
             pivot: IVec3::new(2, 0, 2),
             color: Color::WHITE,
@@ -463,6 +466,7 @@ mod tests {
     fn test_calculate_hard_drop() {
         let mut grid = GameGrid::new();
         let tetromino = Tetromino {
+            piece_type: TetrominoType::I,
             positions: vec![IVec3::ZERO],
             pivot: IVec3::new(0, 10, 0),
             color: Color::WHITE,
@@ -473,7 +477,7 @@ mod tests {
         assert_eq!(drop_pivot.y, 0);
 
         // Block at y=2
-        grid.set(0, 2, 0, Color::WHITE);
+        grid.set(0, 2, 0, TetrominoType::I);
         let drop_pivot_blocked = calculate_hard_drop(&tetromino, &grid);
         assert_eq!(drop_pivot_blocked.y, 3);
     }
@@ -514,6 +518,7 @@ mod tests {
         let mut grid = GameGrid::new();
         let mut dirty = DirtyGrid(false);
         let tetromino = Tetromino {
+            piece_type: TetrominoType::I,
             positions: vec![IVec3::ZERO],
             pivot: IVec3::new(-1, 0, 0), // OOB X
             color: Color::WHITE,
@@ -540,6 +545,7 @@ mod tests {
         
         // Let's use a piece that MUST kick.
         let mut tetromino = Tetromino {
+            piece_type: TetrominoType::I,
             positions: vec![IVec3::ZERO, IVec3::new(0, 1, 0)],
             pivot: IVec3::new(GRID_WIDTH - 1, 0, 0),
             color: Color::WHITE,

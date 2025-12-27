@@ -249,6 +249,7 @@ fn spawn_tetromino(
 
     commands.spawn(( 
         Tetromino {
+            piece_type,
             positions: shapes,
             pivot: start_pos,
             color: get_random_color(piece_type),
