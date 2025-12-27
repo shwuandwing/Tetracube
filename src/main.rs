@@ -104,7 +104,7 @@ fn render_next_piece_preview(
 ) {
     let preview_pivot = Vec3::new(GRID_WIDTH as f32 + 8.0, 0.0, (GRID_DEPTH as f32 - 1.0) / 2.0);
     let shapes = get_shape_blocks(next_piece.0);
-    let color = get_random_color(next_piece.0);
+    let color = get_tetromino_color(next_piece.0);
 
     for pos in shapes {
         let global_pos = preview_pivot + Vec3::new(pos.x as f32, pos.y as f32, pos.z as f32);
@@ -253,7 +253,7 @@ fn spawn_tetromino(
             piece_type,
             positions: shapes,
             pivot: start_pos,
-            color: get_random_color(piece_type),
+            color: get_tetromino_color(piece_type),
         },
         ActiveBlock,
     ));
@@ -514,7 +514,7 @@ fn render_landed_block_indicators(
         for y in 0..GRID_HEIGHT {
             for z in 0..GRID_DEPTH {
                 if let Some(piece_type) = game_grid.get(x, y, z) {
-                    let piece_color = get_random_color(piece_type);
+                    let piece_color = get_tetromino_color(piece_type);
                     gizmos.cuboid(
                         Transform::from_xyz(x as f32, y as f32, z as f32).with_scale(Vec3::splat(1.01)),
                         piece_color,

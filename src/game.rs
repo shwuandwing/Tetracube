@@ -251,7 +251,7 @@ pub fn get_shape_blocks(piece_type: TetrominoType) -> Vec<IVec3> {
     }
 }
 
-pub fn get_random_color(piece_type: TetrominoType) -> Color {
+pub fn get_tetromino_color(piece_type: TetrominoType) -> Color {
      match piece_type {
         TetrominoType::I => Color::srgb(0.0, 1.0, 1.0), // Cyan
         TetrominoType::O => Color::srgb(1.0, 1.0, 0.0), // Yellow
@@ -507,7 +507,7 @@ mod tests {
             let shapes = get_shape_blocks(t);
             assert_eq!(shapes.len(), 4, "Tetromino {:?} must have 4 blocks", t);
             
-            let color = get_random_color(t);
+            let color = get_tetromino_color(t);
             // Just verify it doesn't panic and returns something
             assert!(color.to_linear().to_vec4().length() > 0.0);
         }
