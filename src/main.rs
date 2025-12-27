@@ -168,8 +168,8 @@ fn setup(
 
     commands.insert_resource(audio_handles);
 
-    let center_x = (GRID_WIDTH as f32 - 1.0) / 2.0;
-    let center_z = (GRID_DEPTH as f32 - 1.0) / 2.0;
+    let center_x = (GRID_WIDTH as f32) / 2.0;
+    let center_z = (GRID_DEPTH as f32) / 2.0;
 
     // Camera
     commands.spawn((
