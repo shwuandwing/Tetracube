@@ -74,6 +74,7 @@ fn main() {
             gravity_system, 
             check_layers,
             render_landed_blocks,
+            render_landed_block_indicators,
             render_boundaries,
             render_next_piece_preview,
             ui_system,
@@ -502,6 +503,25 @@ fn ui_system(
     }
     for mut text in &mut level_query {
         text.0 = format!("Level: {}", stats.level);
+    }
+}
+
+fn render_landed_block_indicators(
+    mut gizmos: Gizmos,
+    game_grid: Res<GameGrid>,
+) {
+    for x in 0..GRID_WIDTH {
+        for y in 0..GRID_HEIGHT {
+            for z in 0..GRID_DEPTH {
+                if let Some(piece_type) = game_grid.get(x, y, z) {
+                    let piece_color = get_random_color(piece_type);
+                    gizmos.cuboid(
+                        Transform::from_xyz(x as f32, y as f32, z as f32).with_scale(Vec3::splat(1.01)),
+                        piece_color,
+                    );
+                }
+            }
+        }
     }
 }
 
