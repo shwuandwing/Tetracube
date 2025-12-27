@@ -4,12 +4,14 @@ pub const GRID_WIDTH: i32 = 8;
 pub const GRID_HEIGHT: i32 = 15;
 pub const GRID_DEPTH: i32 = 8;
 
+/// The types of tetromino pieces available in the game, including standard 2D and new 3D shapes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum TetrominoType {
     I, O, T, Z, L,
     Tripod, ScrewL, ScrewR,
 }
 
+/// Represents an active tetromino piece with its type, relative block positions, global pivot, and color.
 #[derive(Component, Clone)]
 pub struct Tetromino {
     pub piece_type: TetrominoType,
@@ -18,9 +20,11 @@ pub struct Tetromino {
     pub color: Color,
 }
 
+/// A resource used to signal that the game grid has changed and needs re-rendering.
 #[derive(Resource, Default)]
 pub struct DirtyGrid(pub bool);
 
+/// The 3D game grid storing the state of landed blocks.
 #[derive(Resource)]
 pub struct GameGrid {
     // Stores the type of the block at x, y, z. None means empty.
@@ -28,12 +32,14 @@ pub struct GameGrid {
 }
 
 impl GameGrid {
+    /// Creates a new empty game grid.
     pub fn new() -> Self {
         Self {
             grid: vec![None; (GRID_WIDTH * GRID_HEIGHT * GRID_DEPTH) as usize],
         }
     }
 
+    /// Converts 3D grid coordinates into a flat vector index.
     pub fn index(x: i32, y: i32, z: i32) -> Option<usize> {
         if x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT || z < 0 || z >= GRID_DEPTH {
             return None;
@@ -41,6 +47,7 @@ impl GameGrid {
         Some((y * GRID_WIDTH * GRID_DEPTH + z * GRID_WIDTH + x) as usize)
     }
 
+    /// Checks if a grid cell is occupied or out of horizontal/bottom bounds.
     pub fn is_occupied(&self, x: i32, y: i32, z: i32) -> bool {
         if x < 0 || x >= GRID_WIDTH || z < 0 || z >= GRID_DEPTH || y < 0 {
             return true;
@@ -55,16 +62,19 @@ impl GameGrid {
         }
     }
     
+    /// Checks if a position is within the horizontal and bottom boundaries of the grid.
     pub fn is_valid_pos(&self, x: i32, y: i32, z: i32) -> bool {
          x >= 0 && x < GRID_WIDTH && z >= 0 && z < GRID_DEPTH && y >= 0
     }
 
+    /// Sets the piece type at a specific grid coordinate.
     pub fn set(&mut self, x: i32, y: i32, z: i32, piece_type: TetrominoType) {
         if let Some(idx) = Self::index(x, y, z) {
             self.grid[idx] = Some(piece_type);
         }
     }
     
+    /// Gets the piece type at a specific grid coordinate, if any.
     pub fn get(&self, x: i32, y: i32, z: i32) -> Option<TetrominoType> {
          if let Some(idx) = Self::index(x, y, z) {
             self.grid[idx]
@@ -73,7 +83,7 @@ impl GameGrid {
         }
     }
 
-    /// Clears full 2D layers and returns the number of layers cleared.
+    /// Clears full 2D horizontal layers and returns the number of layers cleared.
     pub fn clear_full_layers(&mut self, dirty: &mut DirtyGrid) -> u32 {
         let mut layers_cleared = 0;
         let mut y = 0;
@@ -122,7 +132,7 @@ impl GameGrid {
         layers_cleared
     }
 
-    /// Locks a tetromino into the grid. Returns true if it's a Game Over.
+    /// Locks a tetromino into the grid. Returns true if it's a Game Over (locked above height).
     pub fn lock_tetromino(&mut self, tetromino: &Tetromino, dirty: &mut DirtyGrid) -> bool {
         let mut game_over = false;
         dirty.0 = true;
@@ -137,6 +147,7 @@ impl GameGrid {
     }
 }
 
+/// Tries to rotate a tetromino around a given axis, attempting wall and floor kicks if the rotation is blocked.
 pub fn try_rotate_with_kicks(
     tetromino: &mut Tetromino, 
     axis: IVec3, 
@@ -169,6 +180,7 @@ pub fn try_rotate_with_kicks(
     false
 }
 
+/// Rotates a 3D point 90 degrees around one of the cardinal axes.
 pub fn rotate_point(point: IVec3, axis: IVec3, forward: bool) -> IVec3 {
     // 90 degree rotation
     // Forward: +90 deg. Inverse: -90 deg.
@@ -187,6 +199,7 @@ pub fn rotate_point(point: IVec3, axis: IVec3, forward: bool) -> IVec3 {
     }
 }
 
+/// Checks if a set of relative positions can be placed at a given pivot within the grid.
 pub fn can_place(positions: &[IVec3], pivot: IVec3, grid: &GameGrid) -> bool {
     for pos in positions {
         let global = pivot + *pos;
@@ -197,6 +210,7 @@ pub fn can_place(positions: &[IVec3], pivot: IVec3, grid: &GameGrid) -> bool {
     true
 }
 
+/// Calculates the final pivot position for a hard drop.
 pub fn calculate_hard_drop(tetromino: &Tetromino, grid: &GameGrid) -> IVec3 {
     let mut current_pivot = tetromino.pivot;
     loop {
@@ -210,6 +224,7 @@ pub fn calculate_hard_drop(tetromino: &Tetromino, grid: &GameGrid) -> IVec3 {
     current_pivot
 }
 
+/// Keeps track of score and level.
 #[derive(Resource, Default)]
 pub struct GameStats {
     pub score: u32,
@@ -217,10 +232,12 @@ pub struct GameStats {
 }
 
 impl GameStats {
+    /// Creates a new GameStats resource.
     pub fn new() -> Self {
         Self { score: 0, level: 1 }
     }
 
+    /// Adds cleared layers to the score and updates the level. Returns true if leveled up.
     pub fn add_layers(&mut self, layers: u32) -> bool {
         if layers == 0 { return false; }
         self.score += layers * 100;
@@ -232,11 +249,13 @@ impl GameStats {
         false
     }
 
+    /// Calculates the current fall speed based on the level.
     pub fn get_fall_speed(&self) -> f32 {
         (0.8 - (self.level as f32 - 1.0) * 0.1).max(0.1)
     }
 }
 
+/// Returns the relative block positions for a given tetromino type.
 pub fn get_shape_blocks(piece_type: TetrominoType) -> Vec<IVec3> {
     match piece_type {
         // Defined in X/Z plane (y=0)
@@ -251,6 +270,7 @@ pub fn get_shape_blocks(piece_type: TetrominoType) -> Vec<IVec3> {
     }
 }
 
+/// Returns the primary color for a given tetromino type.
 pub fn get_tetromino_color(piece_type: TetrominoType) -> Color {
      match piece_type {
         TetrominoType::I => Color::srgb(0.0, 1.0, 1.0), // Cyan

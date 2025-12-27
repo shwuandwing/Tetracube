@@ -5,6 +5,7 @@ use rand::Rng;
 mod game;
 use game::*;
 
+/// Represents the possible states of the game.
 #[derive(States, Debug, Clone, Copy, Eq, PartialEq, Hash, Default)]
 enum GameState {
     #[default]
@@ -13,31 +14,38 @@ enum GameState {
     GameOver,
 }
 
+/// Stores timing configuration for movement and gravity.
 #[derive(Resource)]
 struct GameConfig {
     move_timer: Timer,
     fall_timer: Timer,
 }
 
+/// Marker component for the currently falling tetromino.
 #[derive(Component)]
 struct ActiveBlock;
 
-// Marker for landed blocks meshes
+/// Marker component for blocks that have landed and are part of the grid.
 #[derive(Component)]
 struct LandedBlock;
 
+/// Marker component for Game Over UI text.
 #[derive(Component)]
 struct GameOverText;
 
+/// Marker component for Score UI text.
 #[derive(Component)]
 struct ScoreText;
 
+/// Marker component for Next Piece UI text.
 #[derive(Component)]
 struct NextPieceText;
 
+/// Marker component for Level UI text.
 #[derive(Component)]
 struct LevelText;
 
+/// Stores handles to audio assets.
 #[derive(Resource)]
 struct AudioHandles {
     move_sound: Handle<AudioSource>,
@@ -47,6 +55,7 @@ struct AudioHandles {
     bgm: Handle<AudioSource>,
 }
 
+/// Cache for landed blocks rendering information.
 #[derive(Resource, Default)]
 struct LandedIndicators(Vec<(Transform, Color)>);
 
@@ -89,9 +98,11 @@ fn main() {
         .run();
 }
 
+/// Resource storing the type of the next tetromino to be spawned.
 #[derive(Resource)]
 struct NextPiece(TetrominoType);
 
+/// Returns a random TetrominoType.
 fn get_random_piece() -> TetrominoType {
     let shapes = [
         TetrominoType::I, TetrominoType::O, TetrominoType::T, 
@@ -102,6 +113,7 @@ fn get_random_piece() -> TetrominoType {
     shapes[rng.random_range(0..shapes.len())]
 }
 
+/// Renders a 3D preview of the next piece using gizmos.
 fn render_next_piece_preview(
     mut gizmos: Gizmos,
     next_piece: Res<NextPiece>,
@@ -119,6 +131,7 @@ fn render_next_piece_preview(
     }
 }
 
+/// Initializes the game world: camera, lights, audio, and UI.
 fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -228,6 +241,7 @@ fn setup(
     ));
 }
 
+/// Spawns a new tetromino at the top of the grid.
 fn spawn_tetromino(
     mut commands: Commands,
     query: Query<&ActiveBlock>,
@@ -264,6 +278,7 @@ fn spawn_tetromino(
     ));
 }
 
+/// Renders the currently active (falling) tetromino using wireframes.
 fn tetromino_render_active(
     mut gizmos: Gizmos,
     query: Query<&Tetromino, With<ActiveBlock>>,
@@ -286,6 +301,7 @@ fn tetromino_render_active(
     }
 }
 
+/// Renders the grid cage boundaries.
 fn render_boundaries(mut gizmos: Gizmos) {
     let w = GRID_WIDTH as f32;
     let h = GRID_HEIGHT as f32;
@@ -320,6 +336,7 @@ fn render_boundaries(mut gizmos: Gizmos) {
     }
 }
 
+/// Handles user input for horizontal/depth movement and rotation.
 fn tetromino_movement(
     mut query: Query<&mut Tetromino, With<ActiveBlock>>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
@@ -393,6 +410,7 @@ fn tetromino_movement(
     }
 }
 
+/// Applies gravity to the active tetromino and locks it if it hits an obstacle.
 fn gravity_system(
     mut commands: Commands,
     mut query: Query<(Entity, &mut Tetromino), With<ActiveBlock>>,
@@ -421,6 +439,7 @@ fn gravity_system(
     }
 }
 
+/// Renders the landed blocks in the grid. Uses level-based coloring for depth perception.
 fn render_landed_grid(
     mut commands: Commands,
     game_grid: Res<GameGrid>,
@@ -470,6 +489,7 @@ fn render_landed_grid(
     }
 }
 
+/// Renders tetromino piece type indicators on landed blocks using gizmos.
 fn render_cached_indicators(
     mut gizmos: Gizmos,
     indicators: Res<LandedIndicators>,
@@ -479,6 +499,7 @@ fn render_cached_indicators(
     }
 }
 
+/// Checks for full horizontal layers and clears them. Updates score and level.
 fn check_layers(
     mut game_grid: ResMut<GameGrid>,
     mut dirty: ResMut<DirtyGrid>,
@@ -498,6 +519,7 @@ fn check_layers(
     }
 }
 
+/// Handles pause input.
 fn pause_input(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     state: Res<State<GameState>>,
@@ -512,6 +534,7 @@ fn pause_input(
     }
 }
 
+/// Updates UI text for score, next piece, and level.
 fn ui_system(
     stats: Res<GameStats>,
     next: Res<NextPiece>,
@@ -530,6 +553,7 @@ fn ui_system(
     }
 }
 
+/// Spawns Game Over UI.
 fn game_over_setup(mut commands: Commands) {
     commands.spawn(( 
         Text::new("GAME OVER\nPress R to Restart"),
@@ -544,6 +568,7 @@ fn game_over_setup(mut commands: Commands) {
     ));
 }
 
+/// Handles input during the Game Over state to restart the game.
 fn game_over_input(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut next_state: ResMut<NextState<GameState>>,

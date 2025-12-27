@@ -4,17 +4,19 @@ A 3D implementation of Tetris using Rust and the Bevy game engine.
 
 ## Features
 - **3D Gameplay**: Blocks fall in a 3D grid (8x8x15).
-- **Rotation**: Full 3D rotation (Q/E/R keys).
-- **Visuals**: Wireframe active block, solid landed blocks with height-based coloring, and a guided 3D cage.
+- **Advanced Shapes**: Includes standard 2D Tetris shapes and unique 3D pieces (Tripod, ScrewL, ScrewR).
+- **Rotation**: Full 3D rotation (Q/E/R keys) with wall and floor kicks.
+- **Visuals**: Top-down view, wireframe active block, solid landed blocks with height-based coloring for depth, and a guided 3D cage.
 - **Sound Effects**: Audio triggers for movement, rotation, drops, and clears.
 - **Game States**: Pause (P), Game Over with Restart (R).
 
 ## Controls
 - **WASD / Arrows**: Move the block on the X/Z plane.
-- **Q / E**: Rotate active block around Y/X axes.
-- **R**: Rotate around Z axis (or Restart on Game Over).
+- **Q / E / R**: Rotate active block around Y / X / Z axes.
+- **Shift + Q/E/R**: Rotate in reverse direction.
 - **Space**: Hard Drop.
 - **P**: Pause Game.
+- **R**: Restart (on Game Over).
 
 ## Running the Game
 Prerequisites: Rust installed.
