@@ -13,12 +13,19 @@ This is a 3D Tetris game written in Rust using Bevy.
 - **Rendering**:
   - Active Block: `Gizmos` (Wireframe) with color-coded edges.
   - Landed Blocks: `Mesh3d` (Cuboids) using level-based (Y-coordinate) coloring for depth perception, with `Gizmos` indicators for piece type.
-  - Camera: Top-down view centered on the grid.
+  - Camera: Top-down view shifted slightly left to accommodate UI.
+  - UI:
+    - **Layer Visualization**: Real-time 2D 8x8 grids for active layers (containing locked blocks). Uses a wrapping flexbox layout on the right side of the screen.
+    - **Game Info**: Score, Level, and Next Piece preview.
   - Boundaries: `Gizmos` (3D Cage).
 - **Gameplay**:
   - Includes standard 2D shapes and complex 3D shapes (Tripod, ScrewL, ScrewR).
   - Rotation system with wall and floor kicks.
   - Level-based gravity speed progression.
+  - **Grid Dirty Tracking**: `DirtyGrid(bool)` resource tracks when the grid needs redrawing for the 2D visualizer.
+- **Refactoring**:
+  - `TetrominoType`: Shape and color logic moved from standalone functions to implementation methods.
+  - `GameGrid`: Added helper methods `is_layer_empty` and `is_layer_full`.
 - **State**: `GameState` enum (Playing, Paused, GameOver) manages transitions.
 - **Audio**: Audio triggers for movement, rotation, clearing, and background music.
 
