@@ -21,7 +21,7 @@ struct GameConfig {
     fall_timer: Timer,
 }
 
-/// Marker component for the currently falling tetromino.
+/// Marker component for the currently falling tetracube.
 #[derive(Component)]
 struct ActiveBlock;
 
@@ -87,9 +87,9 @@ fn main() {
         .add_systems(
             Update,
             (
-                spawn_tetromino,
-                tetromino_movement,
-                tetromino_render_active,
+                spawn_tetracube,
+                tetracube_movement,
+                tetracube_render_active,
                 gravity_system,
                 check_layers,
                 render_landed_grid,
@@ -112,11 +112,11 @@ fn main() {
         .run();
 }
 
-/// Resource storing the type of the next tetromino to be spawned.
+/// Resource storing the type of the next tetracube to be spawned.
 #[derive(Resource)]
 struct NextPiece(TetracubeType);
 
-/// Returns a random TetrominoType.
+/// Returns a random TetracubeType.
 fn get_random_piece() -> TetracubeType {
     let shapes = [
         TetracubeType::I,
@@ -274,8 +274,8 @@ fn setup(
     ));
 }
 
-/// Spawns a new tetromino at the top of the grid.
-fn spawn_tetromino(
+/// Spawns a new tetracube at the top of the grid.
+fn spawn_tetracube(
     mut commands: Commands,
     query: Query<&ActiveBlock>,
     mut next_piece: ResMut<NextPiece>,
@@ -308,11 +308,11 @@ fn spawn_tetromino(
         ActiveBlock,
     ));
 }
-/// Renders the currently active (falling) tetromino using wireframes.
-fn tetromino_render_active(mut gizmos: Gizmos, query: Query<&Tetracube, With<ActiveBlock>>) {
-    for tetromino in &query {
-        for pos in &tetromino.positions {
-            let global_pos = tetromino.pivot + *pos;
+/// Renders the currently active (falling) tetracube using wireframes.
+fn tetracube_render_active(mut gizmos: Gizmos, query: Query<&Tetracube, With<ActiveBlock>>) {
+    for tetracube in &query {
+        for pos in &tetracube.positions {
+            let global_pos = tetracube.pivot + *pos;
             // Draw wireframe box
             gizmos.cuboid(
                 Transform::from_translation(Vec3::new(
@@ -323,7 +323,7 @@ fn tetromino_render_active(mut gizmos: Gizmos, query: Query<&Tetracube, With<Act
                 Color::WHITE,
             );
             // Make it look "wired" by adding an inner cross or something if needed, but cuboid edges is what "wireframe" usually means.
-            // To make it distinct, we can use the tetromino color for the wire.
+            // To make it distinct, we can use the tetracube color for the wire.
             gizmos.cuboid(
                 Transform::from_translation(Vec3::new(
                     global_pos.x as f32,
@@ -331,7 +331,7 @@ fn tetromino_render_active(mut gizmos: Gizmos, query: Query<&Tetracube, With<Act
                     global_pos.z as f32,
                 ))
                 .with_scale(Vec3::splat(0.95)),
-                tetromino.color,
+                tetracube.color,
             );
         }
     }
@@ -405,7 +405,7 @@ fn render_boundaries(mut gizmos: Gizmos) {
 }
 
 /// Handles user input for horizontal/depth movement and rotation.
-fn tetromino_movement(
+fn tetracube_movement(
     mut query: Query<&mut Tetracube, With<ActiveBlock>>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     game_grid: Res<GameGrid>,
@@ -414,7 +414,7 @@ fn tetromino_movement(
     audio: Res<AudioHandles>,
     mut commands: Commands,
 ) {
-    if let Some(mut tetromino) = query.iter_mut().next() {
+    if let Some(mut tetracube) = query.iter_mut().next() {
         config.move_timer.tick(time.delta());
 
         if config.move_timer.is_finished() {
@@ -436,11 +436,11 @@ fn tetromino_movement(
             // Movement
             if move_delta != IVec3::ZERO {
                 if can_place(
-                    &tetromino.positions,
-                    tetromino.pivot + move_delta,
+                    &tetracube.positions,
+                    tetracube.pivot + move_delta,
                     &game_grid,
                 ) {
-                    tetromino.pivot += move_delta;
+                    tetracube.pivot += move_delta;
                     commands.spawn((
                         AudioPlayer::new(audio.move_sound.clone()),
                         PlaybackSettings::DESPAWN,
@@ -455,7 +455,7 @@ fn tetromino_movement(
         // Rotation (Immediate, not timer based for responsiveness)
         if keyboard_input.just_pressed(KeyCode::KeyQ) {
             // Rotate Y
-            if try_rotate_with_kicks(&mut tetromino, IVec3::Y, forward, &game_grid) {
+            if try_rotate_with_kicks(&mut tetracube, IVec3::Y, forward, &game_grid) {
                 commands.spawn((
                     AudioPlayer::new(audio.rotate_sound.clone()),
                     PlaybackSettings::DESPAWN,
@@ -464,7 +464,7 @@ fn tetromino_movement(
         }
         if keyboard_input.just_pressed(KeyCode::KeyE) {
             // Rotate X
-            if try_rotate_with_kicks(&mut tetromino, IVec3::X, forward, &game_grid) {
+            if try_rotate_with_kicks(&mut tetracube, IVec3::X, forward, &game_grid) {
                 commands.spawn((
                     AudioPlayer::new(audio.rotate_sound.clone()),
                     PlaybackSettings::DESPAWN,
@@ -473,7 +473,7 @@ fn tetromino_movement(
         }
         if keyboard_input.just_pressed(KeyCode::KeyR) {
             // Rotate Z
-            if try_rotate_with_kicks(&mut tetromino, IVec3::Z, forward, &game_grid) {
+            if try_rotate_with_kicks(&mut tetracube, IVec3::Z, forward, &game_grid) {
                 commands.spawn((
                     AudioPlayer::new(audio.rotate_sound.clone()),
                     PlaybackSettings::DESPAWN,
@@ -483,9 +483,9 @@ fn tetromino_movement(
 
         // Hard Drop
         if keyboard_input.just_pressed(KeyCode::Space) {
-            let new_pivot = calculate_hard_drop(&tetromino, &game_grid);
-            if new_pivot != tetromino.pivot {
-                tetromino.pivot = new_pivot;
+            let new_pivot = calculate_hard_drop(&tetracube, &game_grid);
+            if new_pivot != tetracube.pivot {
+                tetracube.pivot = new_pivot;
                 commands.spawn((
                     AudioPlayer::new(audio.drop_sound.clone()),
                     PlaybackSettings::DESPAWN,
@@ -497,7 +497,7 @@ fn tetromino_movement(
     }
 }
 
-/// Applies gravity to the active tetromino and locks it if it hits an obstacle.
+/// Applies gravity to the active tetracube and locks it if it hits an obstacle.
 fn gravity_system(
     mut commands: Commands,
     mut query: Query<(Entity, &mut Tetracube), With<ActiveBlock>>,
@@ -512,13 +512,13 @@ fn gravity_system(
         return;
     }
 
-    if let Some((entity, mut tetromino)) = query.iter_mut().next() {
-        let next_y_pivot = tetromino.pivot + IVec3::new(0, -1, 0);
-        if can_place(&tetromino.positions, next_y_pivot, &game_grid) {
-            tetromino.pivot.y -= 1;
+    if let Some((entity, mut tetracube)) = query.iter_mut().next() {
+        let next_y_pivot = tetracube.pivot + IVec3::new(0, -1, 0);
+        if can_place(&tetracube.positions, next_y_pivot, &game_grid) {
+            tetracube.pivot.y -= 1;
         } else {
             // Lock
-            if game_grid.lock_tetromino(&tetromino, &mut dirty) {
+            if game_grid.lock_tetracube(&tetracube, &mut dirty) {
                 next_state.set(GameState::GameOver);
             }
             commands.entity(entity).despawn();
@@ -574,7 +574,7 @@ fn render_landed_grid(
     }
 }
 
-/// Renders tetromino piece type indicators on landed blocks using gizmos.
+/// Renders tetracube piece type indicators on landed blocks using gizmos.
 fn render_cached_indicators(mut gizmos: Gizmos, indicators: Res<LandedIndicators>) {
     for (transform, color) in &indicators.0 {
         gizmos.cuboid(*transform, *color);

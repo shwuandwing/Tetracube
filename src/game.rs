@@ -4,7 +4,7 @@ pub const GRID_WIDTH: i32 = 8;
 pub const GRID_HEIGHT: i32 = 15;
 pub const GRID_DEPTH: i32 = 8;
 
-/// The types of tetromino pieces available in the game, including standard 2D and new 3D shapes.
+/// The types of tetracube pieces available in the game, including standard 2D and new 3D shapes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum TetracubeType {
     I,
@@ -18,7 +18,7 @@ pub enum TetracubeType {
 }
 
 impl TetracubeType {
-    /// Returns the relative block positions for a given tetromino type.
+    /// Returns the relative block positions for a given tetracube type.
     pub fn get_shape_blocks(&self) -> Vec<IVec3> {
         match self {
             // Defined in X/Z plane (y=0)
@@ -73,7 +73,7 @@ impl TetracubeType {
         }
     }
 
-    /// Returns the primary color for a given tetromino type.
+    /// Returns the primary color for a given tetracube type.
     pub fn get_color(&self) -> Color {
         match self {
             TetracubeType::I => Color::srgb(0.0, 1.0, 1.0), // Cyan
@@ -88,7 +88,7 @@ impl TetracubeType {
     }
 }
 
-/// Represents an active tetromino piece with its type, relative block positions, global pivot, and color.
+/// Represents an active tetracube piece with its type, relative block positions, global pivot, and color.
 #[derive(Component, Clone)]
 pub struct Tetracube {
     pub piece_type: TetracubeType,
@@ -205,32 +205,32 @@ impl GameGrid {
         layers_cleared
     }
 
-    /// Permanently locks a tetromino's blocks into the grid.
+    /// Permanently locks a tetracube's blocks into the grid.
     /// Returns true if any part of the piece is at or above GRID_HEIGHT (Game Over).
-    pub fn lock_tetromino(&mut self, tetromino: &Tetracube, dirty: &mut DirtyGrid) -> bool {
+    pub fn lock_tetracube(&mut self, tetracube: &Tetracube, dirty: &mut DirtyGrid) -> bool {
         let mut game_over = false;
         dirty.0 = true;
-        for pos in &tetromino.positions {
-            let global = tetromino.pivot + *pos;
+        for pos in &tetracube.positions {
+            let global = tetracube.pivot + *pos;
             if global.y >= GRID_HEIGHT {
                 game_over = true;
             }
-            self.set(global.x, global.y, global.z, tetromino.piece_type);
+            self.set(global.x, global.y, global.z, tetracube.piece_type);
         }
         game_over
     }
 }
 
-/// Attempts to rotate a tetromino around a given cardinal axis.
+/// Attempts to rotate a tetracube around a given cardinal axis.
 /// If the standard rotation is blocked, it tries a sequence of "kicks" (nudges)
 /// to find a valid nearby position. Returns true if successful.
 pub fn try_rotate_with_kicks(
-    tetromino: &mut Tetracube,
+    tetracube: &mut Tetracube,
     axis: IVec3,
     forward: bool,
     grid: &GameGrid,
 ) -> bool {
-    let new_positions: Vec<IVec3> = tetromino
+    let new_positions: Vec<IVec3> = tetracube
         .positions
         .iter()
         .map(|p| rotate_point(*p, axis, forward))
@@ -248,10 +248,10 @@ pub fn try_rotate_with_kicks(
     ];
 
     for kick in kicks {
-        let test_pivot = tetromino.pivot + kick;
+        let test_pivot = tetracube.pivot + kick;
         if can_place(&new_positions, test_pivot, grid) {
-            tetromino.positions = new_positions;
-            tetromino.pivot = test_pivot;
+            tetracube.positions = new_positions;
+            tetracube.pivot = test_pivot;
             return true;
         }
     }
@@ -281,9 +281,9 @@ pub fn can_place(positions: &[IVec3], pivot: IVec3, grid: &GameGrid) -> bool {
 }
 
 /// Calculates the final pivot position for a hard drop.
-pub fn calculate_hard_drop(tetromino: &Tetracube, grid: &GameGrid) -> IVec3 {
-    let mut current_pivot = tetromino.pivot;
-    while can_place(&tetromino.positions, current_pivot + IVec3::NEG_Y, grid) {
+pub fn calculate_hard_drop(tetracube: &Tetracube, grid: &GameGrid) -> IVec3 {
+    let mut current_pivot = tetracube.pivot;
+    while can_place(&tetracube.positions, current_pivot + IVec3::NEG_Y, grid) {
         current_pivot += IVec3::NEG_Y;
     }
     current_pivot
@@ -389,10 +389,10 @@ mod tests {
     }
 
     #[test]
-    fn test_lock_tetromino() {
+    fn test_lock_tetracube() {
         let mut grid = GameGrid::new();
         let mut dirty = DirtyGrid(false);
-        let tetromino = Tetracube {
+        let tetracube = Tetracube {
             piece_type: TetracubeType::I,
             positions: vec![IVec3::ZERO],
             pivot: IVec3::new(0, 0, 0),
@@ -400,19 +400,19 @@ mod tests {
         };
 
         // Not game over
-        let game_over = grid.lock_tetromino(&tetromino, &mut dirty);
+        let game_over = grid.lock_tetracube(&tetracube, &mut dirty);
         assert!(!game_over);
         assert!(grid.get(0, 0, 0).is_some());
         assert!(dirty.0);
 
         // Game over (locks at or above GRID_HEIGHT)
-        let tetromino_high = Tetracube {
+        let tetracube_high = Tetracube {
             piece_type: TetracubeType::I,
             positions: vec![IVec3::ZERO],
             pivot: IVec3::new(0, GRID_HEIGHT, 0),
             color: Color::WHITE,
         };
-        let game_over_high = grid.lock_tetromino(&tetromino_high, &mut dirty);
+        let game_over_high = grid.lock_tetracube(&tetracube_high, &mut dirty);
         assert!(game_over_high);
     }
 
@@ -476,7 +476,7 @@ mod tests {
     fn test_try_rotate_with_kicks_floor() {
         // I piece lying flat at y=0. Pivot at y=0.
         // Rotation might push some blocks to y=-1, requiring a floor kick (upwards).
-        let mut tetromino = Tetracube {
+        let mut tetracube = Tetracube {
             piece_type: TetracubeType::I,
             positions: vec![IVec3::new(0, 0, 0), IVec3::new(0, 1, 0)], // Vertical 2-block piece
             pivot: IVec3::new(2, 0, 2),
@@ -491,7 +491,7 @@ mod tests {
         // This specific rotation doesn't hit floor.
 
         // Let's try one that DOES hit the floor.
-        tetromino.positions = vec![IVec3::new(0, 0, 0), IVec3::new(0, 0, 1)];
+        tetracube.positions = vec![IVec3::new(0, 0, 0), IVec3::new(0, 0, 1)];
         // Rotate around X (inverse): (x, z, -y) relative
         // (0,0,1) -> (0,1,0) - No.
 
@@ -500,7 +500,7 @@ mod tests {
         let mut grid = GameGrid::new();
         grid.set(2, 0, 3, TetracubeType::I); // Blocks (0,0,1) relative to (2,0,2)
 
-        let mut tetromino = Tetracube {
+        let mut tetracube = Tetracube {
             piece_type: TetracubeType::I,
             positions: vec![IVec3::new(0, 0, 0), IVec3::new(0, 1, 0)],
             pivot: IVec3::new(2, 0, 2),
@@ -511,13 +511,13 @@ mod tests {
         // (0,1,0) -> (0,1,0) - No change in y.
 
         // Simple case: try_rotate_with_kicks should return true if valid.
-        assert!(try_rotate_with_kicks(&mut tetromino, IVec3::Y, true, &grid));
+        assert!(try_rotate_with_kicks(&mut tetracube, IVec3::Y, true, &grid));
     }
 
     #[test]
     fn test_calculate_hard_drop() {
         let mut grid = GameGrid::new();
-        let tetromino = Tetracube {
+        let tetracube = Tetracube {
             piece_type: TetracubeType::I,
             positions: vec![IVec3::ZERO],
             pivot: IVec3::new(0, 10, 0),
@@ -525,12 +525,12 @@ mod tests {
         };
 
         // Should drop to y=0
-        let drop_pivot = calculate_hard_drop(&tetromino, &grid);
+        let drop_pivot = calculate_hard_drop(&tetracube, &grid);
         assert_eq!(drop_pivot.y, 0);
 
         // Block at y=2
         grid.set(0, 2, 0, TetracubeType::I);
-        let drop_pivot_blocked = calculate_hard_drop(&tetromino, &grid);
+        let drop_pivot_blocked = calculate_hard_drop(&tetracube, &grid);
         assert_eq!(drop_pivot_blocked.y, 3);
     }
 
@@ -553,7 +553,7 @@ mod tests {
     }
 
     #[test]
-    fn test_new_3d_tetromino_shapes() {
+    fn test_new_3d_tetracube_shapes() {
         let types = [
             TetracubeType::Tripod,
             TetracubeType::ScrewL,
@@ -561,7 +561,7 @@ mod tests {
         ];
         for t in types {
             let shapes = t.get_shape_blocks();
-            assert_eq!(shapes.len(), 4, "Tetromino {:?} must have 4 blocks", t);
+            assert_eq!(shapes.len(), 4, "Tetracube {:?} must have 4 blocks", t);
 
             let color = t.get_color();
             // Just verify it doesn't panic and returns something
@@ -591,17 +591,17 @@ mod tests {
     }
 
     #[test]
-    fn test_lock_tetromino_out_of_bounds() {
+    fn test_lock_tetracube_out_of_bounds() {
         let mut grid = GameGrid::new();
         let mut dirty = DirtyGrid(false);
-        let tetromino = Tetracube {
+        let tetracube = Tetracube {
             piece_type: TetracubeType::I,
             positions: vec![IVec3::ZERO],
             pivot: IVec3::new(-1, 0, 0), // OOB X
             color: Color::WHITE,
         };
         // Should not panic and should not set anything in grid (index returns None)
-        grid.lock_tetromino(&tetromino, &mut dirty);
+        grid.lock_tetracube(&tetracube, &mut dirty);
         assert!(dirty.0);
     }
 
@@ -610,7 +610,7 @@ mod tests {
         let grid = GameGrid::new();
 
         // Let's use a piece that MUST kick.
-        let mut tetromino = Tetracube {
+        let mut tetracube = Tetracube {
             piece_type: TetracubeType::I,
             positions: vec![IVec3::ZERO, IVec3::new(0, 1, 0)],
             pivot: IVec3::new(GRID_WIDTH - 1, 0, 0),
@@ -618,9 +618,9 @@ mod tests {
         };
 
         // Let's put it at X=0 and rotate it to X=-1.
-        tetromino.pivot = IVec3::new(0, 0, 0);
+        tetracube.pivot = IVec3::new(0, 0, 0);
         // Rotate Z (forward): (0,1,0) -> (-1,0,0). OOB!
         // It should kick to (1,0,0) or similar.
-        assert!(try_rotate_with_kicks(&mut tetromino, IVec3::Z, true, &grid));
+        assert!(try_rotate_with_kicks(&mut tetracube, IVec3::Z, true, &grid));
     }
 }
