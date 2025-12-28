@@ -730,15 +730,18 @@ fn update_layer_visualization(
                             BorderColor::all(Color::WHITE),
                         ))
                         .with_children(|grid_parent| {
-                        grid_parent.spawn((
-                            Text::new(format!("Layer {}", y)),
-                            TextFont {
-                                font_size: 12.0,
-                                ..default()
-                            },
-                            TextColor(Color::WHITE),
-                            Node { height: Val::Px(12.0), ..default() }
-                        ));
+                            grid_parent.spawn((
+                                Text::new(format!("Layer {}", y)),
+                                TextFont {
+                                    font_size: 12.0,
+                                    ..default()
+                                },
+                                TextColor(Color::WHITE),
+                                Node {
+                                    height: Val::Px(12.0),
+                                    ..default()
+                                },
+                            ));
                             grid_parent
                                 .spawn(Node {
                                     display: Display::Grid,
