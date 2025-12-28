@@ -299,7 +299,7 @@ fn spawn_tetromino(
     }
 
     commands.spawn((
-        Tetromino {
+        Tetracube {
             piece_type,
             positions: shapes,
             pivot: start_pos,
@@ -309,7 +309,7 @@ fn spawn_tetromino(
     ));
 }
 /// Renders the currently active (falling) tetromino using wireframes.
-fn tetromino_render_active(mut gizmos: Gizmos, query: Query<&Tetromino, With<ActiveBlock>>) {
+fn tetromino_render_active(mut gizmos: Gizmos, query: Query<&Tetracube, With<ActiveBlock>>) {
     for tetromino in &query {
         for pos in &tetromino.positions {
             let global_pos = tetromino.pivot + *pos;
@@ -406,7 +406,7 @@ fn render_boundaries(mut gizmos: Gizmos) {
 
 /// Handles user input for horizontal/depth movement and rotation.
 fn tetromino_movement(
-    mut query: Query<&mut Tetromino, With<ActiveBlock>>,
+    mut query: Query<&mut Tetracube, With<ActiveBlock>>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     game_grid: Res<GameGrid>,
     time: Res<Time>,
@@ -500,7 +500,7 @@ fn tetromino_movement(
 /// Applies gravity to the active tetromino and locks it if it hits an obstacle.
 fn gravity_system(
     mut commands: Commands,
-    mut query: Query<(Entity, &mut Tetromino), With<ActiveBlock>>,
+    mut query: Query<(Entity, &mut Tetracube), With<ActiveBlock>>,
     mut game_grid: ResMut<GameGrid>,
     mut dirty: ResMut<DirtyGrid>,
     mut next_state: ResMut<NextState<GameState>>,
