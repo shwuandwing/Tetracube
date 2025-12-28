@@ -553,8 +553,13 @@ mod tests {
     }
 
     #[test]
-    fn test_new_3d_tetracube_shapes() {
+    fn test_3d_tetracube_shapes() {
         let types = [
+            TetracubeType::I,
+            TetracubeType::O,
+            TetracubeType::T,
+            TetracubeType::Z,
+            TetracubeType::L,
             TetracubeType::Tripod,
             TetracubeType::ScrewL,
             TetracubeType::ScrewR,
