@@ -114,19 +114,19 @@ fn main() {
 
 /// Resource storing the type of the next tetromino to be spawned.
 #[derive(Resource)]
-struct NextPiece(TetrominoType);
+struct NextPiece(TetracubeType);
 
 /// Returns a random TetrominoType.
-fn get_random_piece() -> TetrominoType {
+fn get_random_piece() -> TetracubeType {
     let shapes = [
-        TetrominoType::I,
-        TetrominoType::O,
-        TetrominoType::T,
-        TetrominoType::Z,
-        TetrominoType::L,
-        TetrominoType::Tripod,
-        TetrominoType::ScrewL,
-        TetrominoType::ScrewR,
+        TetracubeType::I,
+        TetracubeType::O,
+        TetracubeType::T,
+        TetracubeType::Z,
+        TetracubeType::L,
+        TetracubeType::Tripod,
+        TetracubeType::ScrewL,
+        TetracubeType::ScrewR,
     ];
     let mut rng = rand::rng();
     shapes[rng.random_range(0..shapes.len())]

@@ -6,7 +6,7 @@ pub const GRID_DEPTH: i32 = 8;
 
 /// The types of tetromino pieces available in the game, including standard 2D and new 3D shapes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum TetrominoType {
+pub enum TetracubeType {
     I,
     O,
     T,
@@ -17,54 +17,54 @@ pub enum TetrominoType {
     ScrewR,
 }
 
-impl TetrominoType {
+impl TetracubeType {
     /// Returns the relative block positions for a given tetromino type.
     pub fn get_shape_blocks(&self) -> Vec<IVec3> {
         match self {
             // Defined in X/Z plane (y=0)
-            TetrominoType::I => vec![
+            TetracubeType::I => vec![
                 IVec3::new(0, 0, 0),
                 IVec3::new(-1, 0, 0),
                 IVec3::new(1, 0, 0),
                 IVec3::new(2, 0, 0),
             ],
-            TetrominoType::O => vec![
+            TetracubeType::O => vec![
                 IVec3::new(0, 0, 0),
                 IVec3::new(1, 0, 0),
                 IVec3::new(0, 0, 1),
                 IVec3::new(1, 0, 1),
             ],
-            TetrominoType::T => vec![
+            TetracubeType::T => vec![
                 IVec3::new(0, 0, 0),
                 IVec3::new(-1, 0, 0),
                 IVec3::new(1, 0, 0),
                 IVec3::new(0, 0, 1),
             ],
-            TetrominoType::Z => vec![
+            TetracubeType::Z => vec![
                 IVec3::new(0, 0, 0),
                 IVec3::new(1, 0, 0),
                 IVec3::new(0, 0, 1),
                 IVec3::new(-1, 0, 1),
             ],
-            TetrominoType::L => vec![
+            TetracubeType::L => vec![
                 IVec3::new(0, 0, 0),
                 IVec3::new(-1, 0, 0),
                 IVec3::new(1, 0, 0),
                 IVec3::new(1, 0, 1),
             ],
-            TetrominoType::Tripod => vec![
+            TetracubeType::Tripod => vec![
                 IVec3::new(0, 0, 0),
                 IVec3::new(1, 0, 0),
                 IVec3::new(0, 1, 0),
                 IVec3::new(0, 0, 1),
             ],
-            TetrominoType::ScrewL => vec![
+            TetracubeType::ScrewL => vec![
                 IVec3::new(0, 0, 0),
                 IVec3::new(1, 0, 0),
                 IVec3::new(1, 1, 0),
                 IVec3::new(1, 1, 1),
             ],
-            TetrominoType::ScrewR => vec![
+            TetracubeType::ScrewR => vec![
                 IVec3::new(0, 0, 0),
                 IVec3::new(1, 0, 0),
                 IVec3::new(1, 1, 0),
@@ -76,14 +76,14 @@ impl TetrominoType {
     /// Returns the primary color for a given tetromino type.
     pub fn get_color(&self) -> Color {
         match self {
-            TetrominoType::I => Color::srgb(0.0, 1.0, 1.0), // Cyan
-            TetrominoType::O => Color::srgb(1.0, 1.0, 0.0), // Yellow
-            TetrominoType::T => Color::srgb(1.0, 0.0, 1.0), // Magenta
-            TetrominoType::Z => Color::srgb(1.0, 0.0, 0.0), // Red
-            TetrominoType::L => Color::srgb(1.0, 0.5, 0.0), // Orange
-            TetrominoType::Tripod => Color::srgb(1.0, 1.0, 1.0), // White
-            TetrominoType::ScrewL => Color::srgb(0.5, 1.0, 0.0), // Lime
-            TetrominoType::ScrewR => Color::srgb(0.5, 0.0, 1.0), // Purple
+            TetracubeType::I => Color::srgb(0.0, 1.0, 1.0), // Cyan
+            TetracubeType::O => Color::srgb(1.0, 1.0, 0.0), // Yellow
+            TetracubeType::T => Color::srgb(1.0, 0.0, 1.0), // Magenta
+            TetracubeType::Z => Color::srgb(1.0, 0.0, 0.0), // Red
+            TetracubeType::L => Color::srgb(1.0, 0.5, 0.0), // Orange
+            TetracubeType::Tripod => Color::srgb(1.0, 1.0, 1.0), // White
+            TetracubeType::ScrewL => Color::srgb(0.5, 1.0, 0.0), // Lime
+            TetracubeType::ScrewR => Color::srgb(0.5, 0.0, 1.0), // Purple
         }
     }
 }
@@ -91,7 +91,7 @@ impl TetrominoType {
 /// Represents an active tetromino piece with its type, relative block positions, global pivot, and color.
 #[derive(Component, Clone)]
 pub struct Tetromino {
-    pub piece_type: TetrominoType,
+    pub piece_type: TetracubeType,
     pub positions: Vec<IVec3>, // Relative positions to the pivot
     pub pivot: IVec3,          // Global position
     pub color: Color,
@@ -105,7 +105,7 @@ pub struct DirtyGrid(pub bool);
 #[derive(Resource)]
 pub struct GameGrid {
     // Stores the type of the block at x, y, z. None means empty.
-    pub grid: Vec<Option<TetrominoType>>,
+    pub grid: Vec<Option<TetracubeType>>,
 }
 
 impl GameGrid {
@@ -140,14 +140,14 @@ impl GameGrid {
     }
 
     /// Sets the piece type at a specific grid coordinate.
-    pub fn set(&mut self, x: i32, y: i32, z: i32, piece_type: TetrominoType) {
+    pub fn set(&mut self, x: i32, y: i32, z: i32, piece_type: TetracubeType) {
         if let Some(idx) = Self::index(x, y, z) {
             self.grid[idx] = Some(piece_type);
         }
     }
 
     /// Gets the piece type at a specific grid coordinate, if any.
-    pub fn get(&self, x: i32, y: i32, z: i32) -> Option<TetrominoType> {
+    pub fn get(&self, x: i32, y: i32, z: i32) -> Option<TetracubeType> {
         Self::index(x, y, z).and_then(|idx| self.grid[idx])
     }
 
@@ -337,7 +337,7 @@ mod tests {
         let mut grid = GameGrid::new();
         assert!(!grid.is_occupied(0, 0, 0));
 
-        grid.set(0, 0, 0, TetrominoType::I);
+        grid.set(0, 0, 0, TetracubeType::I);
         assert!(grid.is_occupied(0, 0, 0));
 
         // Out of bounds (negative or horizontal) is occupied
@@ -384,7 +384,7 @@ mod tests {
         assert!(!can_place(&positions, oob_pivot, &grid));
 
         // Collide with block
-        grid.set(3, 2, 2, TetrominoType::I);
+        grid.set(3, 2, 2, TetracubeType::I);
         assert!(!can_place(&positions, pivot, &grid));
     }
 
@@ -393,7 +393,7 @@ mod tests {
         let mut grid = GameGrid::new();
         let mut dirty = DirtyGrid(false);
         let tetromino = Tetromino {
-            piece_type: TetrominoType::I,
+            piece_type: TetracubeType::I,
             positions: vec![IVec3::ZERO],
             pivot: IVec3::new(0, 0, 0),
             color: Color::WHITE,
@@ -407,7 +407,7 @@ mod tests {
 
         // Game over (locks at or above GRID_HEIGHT)
         let tetromino_high = Tetromino {
-            piece_type: TetrominoType::I,
+            piece_type: TetracubeType::I,
             positions: vec![IVec3::ZERO],
             pivot: IVec3::new(0, GRID_HEIGHT, 0),
             color: Color::WHITE,
@@ -419,9 +419,9 @@ mod tests {
     #[test]
     fn test_grid_get_set() {
         let mut grid = GameGrid::new();
-        grid.set(1, 2, 3, TetrominoType::T);
+        grid.set(1, 2, 3, TetracubeType::T);
 
-        assert_eq!(grid.get(1, 2, 3), Some(TetrominoType::T));
+        assert_eq!(grid.get(1, 2, 3), Some(TetracubeType::T));
         assert!(grid.get(0, 0, 0).is_none());
         assert!(grid.get(-1, -1, -1).is_none());
     }
@@ -433,18 +433,18 @@ mod tests {
         // Fill a layer (y=0)
         for x in 0..GRID_WIDTH {
             for z in 0..GRID_DEPTH {
-                grid.set(x, 0, z, TetrominoType::O);
+                grid.set(x, 0, z, TetracubeType::O);
             }
         }
         // Put one block at y=1
-        grid.set(0, 1, 0, TetrominoType::Z);
+        grid.set(0, 1, 0, TetracubeType::Z);
 
         let cleared = grid.clear_full_layers(&mut dirty);
         assert_eq!(cleared, 1);
         assert!(dirty.0);
 
         // Block at y=1 should have dropped to y=0
-        assert_eq!(grid.get(0, 0, 0), Some(TetrominoType::Z));
+        assert_eq!(grid.get(0, 0, 0), Some(TetracubeType::Z));
         // Layer y=1 should now be empty except for what dropped (or if it was already empty)
         assert!(grid.get(1, 1, 1).is_none());
     }
@@ -457,18 +457,18 @@ mod tests {
         for y in 0..2 {
             for x in 0..GRID_WIDTH {
                 for z in 0..GRID_DEPTH {
-                    grid.set(x, y, z, TetrominoType::O);
+                    grid.set(x, y, z, TetracubeType::O);
                 }
             }
         }
         // Put one block at y=2
-        grid.set(0, 2, 0, TetrominoType::L);
+        grid.set(0, 2, 0, TetracubeType::L);
 
         let cleared = grid.clear_full_layers(&mut dirty);
         assert_eq!(cleared, 2);
 
         // Block at y=2 should have dropped to y=0
-        assert_eq!(grid.get(0, 0, 0), Some(TetrominoType::L));
+        assert_eq!(grid.get(0, 0, 0), Some(TetracubeType::L));
         assert!(grid.get(0, 1, 0).is_none());
     }
 
@@ -477,7 +477,7 @@ mod tests {
         // I piece lying flat at y=0. Pivot at y=0.
         // Rotation might push some blocks to y=-1, requiring a floor kick (upwards).
         let mut tetromino = Tetromino {
-            piece_type: TetrominoType::I,
+            piece_type: TetracubeType::I,
             positions: vec![IVec3::new(0, 0, 0), IVec3::new(0, 1, 0)], // Vertical 2-block piece
             pivot: IVec3::new(2, 0, 2),
             color: Color::WHITE,
@@ -498,10 +498,10 @@ mod tests {
         // Actually, let's just test that a kick happens if needed.
         // Place block that blocks normal rotation, but allows a kicked one.
         let mut grid = GameGrid::new();
-        grid.set(2, 0, 3, TetrominoType::I); // Blocks (0,0,1) relative to (2,0,2)
+        grid.set(2, 0, 3, TetracubeType::I); // Blocks (0,0,1) relative to (2,0,2)
 
         let mut tetromino = Tetromino {
-            piece_type: TetrominoType::I,
+            piece_type: TetracubeType::I,
             positions: vec![IVec3::new(0, 0, 0), IVec3::new(0, 1, 0)],
             pivot: IVec3::new(2, 0, 2),
             color: Color::WHITE,
@@ -518,7 +518,7 @@ mod tests {
     fn test_calculate_hard_drop() {
         let mut grid = GameGrid::new();
         let tetromino = Tetromino {
-            piece_type: TetrominoType::I,
+            piece_type: TetracubeType::I,
             positions: vec![IVec3::ZERO],
             pivot: IVec3::new(0, 10, 0),
             color: Color::WHITE,
@@ -529,7 +529,7 @@ mod tests {
         assert_eq!(drop_pivot.y, 0);
 
         // Block at y=2
-        grid.set(0, 2, 0, TetrominoType::I);
+        grid.set(0, 2, 0, TetracubeType::I);
         let drop_pivot_blocked = calculate_hard_drop(&tetromino, &grid);
         assert_eq!(drop_pivot_blocked.y, 3);
     }
@@ -555,9 +555,9 @@ mod tests {
     #[test]
     fn test_new_3d_tetromino_shapes() {
         let types = [
-            TetrominoType::Tripod,
-            TetrominoType::ScrewL,
-            TetrominoType::ScrewR,
+            TetracubeType::Tripod,
+            TetracubeType::ScrewL,
+            TetracubeType::ScrewR,
         ];
         for t in types {
             let shapes = t.get_shape_blocks();
@@ -578,14 +578,14 @@ mod tests {
         // Fill layer 0
         for x in 0..GRID_WIDTH {
             for z in 0..GRID_DEPTH {
-                grid.set(x, 0, z, TetrominoType::I);
+                grid.set(x, 0, z, TetracubeType::I);
             }
         }
         assert!(!grid.is_layer_empty(0));
         assert!(grid.is_layer_full(0));
 
         // Partly fill layer 1
-        grid.set(0, 1, 0, TetrominoType::I);
+        grid.set(0, 1, 0, TetracubeType::I);
         assert!(!grid.is_layer_empty(1));
         assert!(!grid.is_layer_full(1));
     }
@@ -595,7 +595,7 @@ mod tests {
         let mut grid = GameGrid::new();
         let mut dirty = DirtyGrid(false);
         let tetromino = Tetromino {
-            piece_type: TetrominoType::I,
+            piece_type: TetracubeType::I,
             positions: vec![IVec3::ZERO],
             pivot: IVec3::new(-1, 0, 0), // OOB X
             color: Color::WHITE,
@@ -611,7 +611,7 @@ mod tests {
 
         // Let's use a piece that MUST kick.
         let mut tetromino = Tetromino {
-            piece_type: TetrominoType::I,
+            piece_type: TetracubeType::I,
             positions: vec![IVec3::ZERO, IVec3::new(0, 1, 0)],
             pivot: IVec3::new(GRID_WIDTH - 1, 0, 0),
             color: Color::WHITE,
