@@ -1,7 +1,7 @@
 # Gemini Agent Context
 
 ## Project Overview
-This is a 3D Tetris game written in Rust using the Bevy game engine (v0.17).
+This is a 3D puzzle game involving tetracubes written in Rust using the Bevy game engine (v0.17).
 
 ## Key Files
 - `src/main.rs`: Entry point. Contains App setup, ECS systems (Movement, Render, UI, States), and unit tests for systems.

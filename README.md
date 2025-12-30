@@ -1,6 +1,6 @@
 # Tetracube (Rust/Bevy)
 
-A 3D implementation of Tetris using Rust and the Bevy game engine.
+A 3D Puzzle game involving tetracubes using Rust and the Bevy game engine.
 
 ## Features
 - **Intro Screen**: A clean starting screen with the game title and start instructions.
