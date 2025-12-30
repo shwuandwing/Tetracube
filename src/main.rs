@@ -9,6 +9,7 @@ use game::*;
 #[derive(States, Debug, Clone, Copy, Eq, PartialEq, Hash, Default)]
 enum GameState {
     #[default]
+    Intro,
     Playing,
     Paused,
     GameOver,
@@ -29,6 +30,10 @@ struct ActiveBlock;
 #[derive(Component)]
 struct LandedBlock;
 
+/// Marker component for Intro UI text.
+#[derive(Component)]
+struct IntroText;
+
 /// Marker component for Game Over UI text.
 #[derive(Component)]
 struct GameOverText;
@@ -48,6 +53,10 @@ struct LevelText;
 /// Marker component for the layer visualization container.
 #[derive(Component)]
 struct LayerVisualizer;
+
+/// Marker component for game UI elements that should be hidden during intro.
+#[derive(Component)]
+struct GameUI;
 
 /// Stores handles to audio assets.
 #[derive(Resource)]
@@ -84,6 +93,10 @@ fn main() {
         .insert_resource(GameStats::new())
         .init_resource::<LandedIndicators>()
         .add_systems(Startup, setup)
+        .add_systems(OnEnter(GameState::Intro), intro_setup)
+        .add_systems(Update, intro_input.run_if(in_state(GameState::Intro)))
+        .add_systems(OnExit(GameState::Intro), intro_cleanup)
+        .add_systems(OnEnter(GameState::Playing), playing_setup)
         .add_systems(
             Update,
             (
@@ -220,6 +233,8 @@ fn setup(
             ..default()
         },
         ScoreText,
+        GameUI,
+        Visibility::Hidden,
     ));
 
     commands.spawn((
@@ -231,6 +246,8 @@ fn setup(
             ..default()
         },
         NextPieceText,
+        GameUI,
+        Visibility::Hidden,
     ));
 
     commands.spawn((
@@ -242,6 +259,8 @@ fn setup(
             ..default()
         },
         LevelText,
+        GameUI,
+        Visibility::Hidden,
     ));
 
     // Initial instruction
@@ -253,6 +272,8 @@ fn setup(
             left: Val::Px(10.0),
             ..default()
         },
+        GameUI,
+        Visibility::Hidden,
     ));
 
     // Layer Visualization Container
@@ -271,6 +292,8 @@ fn setup(
             ..default()
         },
         LayerVisualizer,
+        GameUI,
+        Visibility::Hidden,
     ));
 }
 
@@ -774,5 +797,138 @@ fn update_layer_visualization(
                 });
             }
         }
+    }
+}
+
+/// Spawns the Intro UI.
+fn intro_setup(mut commands: Commands) {
+    commands.spawn((
+        Text::new("T E T R A C U B E"),
+        TextFont {
+            font_size: 80.0,
+            ..default()
+        },
+        Node {
+            position_type: PositionType::Absolute,
+            top: Val::Percent(30.0),
+            left: Val::Percent(25.0),
+            ..default()
+        },
+        TextColor(Color::srgb(0.0, 1.0, 1.0)),
+        IntroText,
+    ));
+
+    commands.spawn((
+        Text::new("Press 'G' to Start Game"),
+        TextFont {
+            font_size: 30.0,
+            ..default()
+        },
+        Node {
+            position_type: PositionType::Absolute,
+            top: Val::Percent(60.0),
+            left: Val::Percent(35.0),
+            ..default()
+        },
+        IntroText,
+    ));
+}
+
+/// Handles input during the Intro state.
+fn intro_input(
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut next_state: ResMut<NextState<GameState>>,
+) {
+    if keyboard_input.just_pressed(KeyCode::KeyG) {
+        next_state.set(GameState::Playing);
+    }
+}
+
+/// Cleans up Intro UI elements.
+fn intro_cleanup(mut commands: Commands, query: Query<Entity, With<IntroText>>) {
+    for entity in &query {
+        commands.entity(entity).despawn();
+    }
+}
+
+/// Makes game UI elements visible when entering the Playing state.
+fn playing_setup(mut query: Query<&mut Visibility, With<GameUI>>) {
+    for mut visibility in &mut query {
+        *visibility = Visibility::Visible;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_test_app() -> App {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.add_plugins(bevy::state::app::StatesPlugin); // Or just StatesPlugin if in prelude
+        app.init_state::<GameState>();
+        app
+    }
+
+    #[test]
+    fn test_intro_ui_spawns() {
+        let mut app = create_test_app();
+        app.add_systems(OnEnter(GameState::Intro), intro_setup);
+        
+        // Trigger OnEnter(GameState::Intro)
+        app.update();
+
+        let mut query = app.world_mut().query_filtered::<Entity, With<IntroText>>();
+        let count = query.iter(app.world()).count();
+        assert_eq!(count, 2, "Intro screen should spawn 2 text entities");
+    }
+
+    #[test]
+    fn test_intro_transition_on_keypress() {
+        let mut app = create_test_app();
+        app.init_resource::<ButtonInput<KeyCode>>();
+        app.add_systems(Update, intro_input.run_if(in_state(GameState::Intro)));
+
+        // Simulate pressing 'G'
+        let mut input = app.world_mut().resource_mut::<ButtonInput<KeyCode>>();
+        input.press(KeyCode::KeyG);
+
+        app.update(); // Sets NextState
+        app.update(); // Processes transition
+
+        let state = app.world().resource::<State<GameState>>();
+        assert_eq!(*state.get(), GameState::Playing);
+    }
+
+    #[test]
+    fn test_intro_cleanup() {
+        let mut app = create_test_app();
+        
+        // Manually spawn an intro entity
+        app.world_mut().spawn((Text::new("Test"), IntroText));
+        
+        app.add_systems(OnExit(GameState::Intro), intro_cleanup);
+        
+        // Transition state to trigger OnExit
+        app.world_mut().resource_mut::<NextState<GameState>>().set(GameState::Playing);
+        app.update(); // Processes transition and OnExit
+
+        let mut query = app.world_mut().query_filtered::<Entity, With<IntroText>>();
+        assert_eq!(query.iter(app.world()).count(), 0, "Intro entities should be despawned on exit");
+    }
+
+    #[test]
+    fn test_playing_setup_reveals_ui() {
+        let mut app = create_test_app();
+        
+        // Spawn a hidden UI entity
+        app.world_mut().spawn((GameUI, Visibility::Hidden));
+        
+        app.add_systems(Update, playing_setup);
+        app.update();
+
+        let mut query = app.world_mut().query_filtered::<&Visibility, With<GameUI>>();
+        let visibility = query.iter(app.world()).next().expect("Should have one GameUI entity");
+        assert_eq!(*visibility, Visibility::Visible, "GameUI should be visible in Playing state");
     }
 }
