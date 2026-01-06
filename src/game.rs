@@ -19,52 +19,52 @@ pub enum TetracubeType {
 
 impl TetracubeType {
     /// Returns the relative block positions for a given tetracube type.
-    pub fn get_shape_blocks(&self) -> Vec<IVec3> {
+    pub fn get_shape_blocks(&self) -> [IVec3; 4] {
         match self {
             // Defined in X/Z plane (y=0)
-            TetracubeType::I => vec![
+            TetracubeType::I => [
                 IVec3::new(0, 0, 0),
                 IVec3::new(-1, 0, 0),
                 IVec3::new(1, 0, 0),
                 IVec3::new(2, 0, 0),
             ],
-            TetracubeType::O => vec![
+            TetracubeType::O => [
                 IVec3::new(0, 0, 0),
                 IVec3::new(1, 0, 0),
                 IVec3::new(0, 0, 1),
                 IVec3::new(1, 0, 1),
             ],
-            TetracubeType::T => vec![
+            TetracubeType::T => [
                 IVec3::new(0, 0, 0),
                 IVec3::new(-1, 0, 0),
                 IVec3::new(1, 0, 0),
                 IVec3::new(0, 0, 1),
             ],
-            TetracubeType::Z => vec![
+            TetracubeType::Z => [
                 IVec3::new(0, 0, 0),
                 IVec3::new(1, 0, 0),
                 IVec3::new(0, 0, 1),
                 IVec3::new(-1, 0, 1),
             ],
-            TetracubeType::L => vec![
+            TetracubeType::L => [
                 IVec3::new(0, 0, 0),
                 IVec3::new(-1, 0, 0),
                 IVec3::new(1, 0, 0),
                 IVec3::new(1, 0, 1),
             ],
-            TetracubeType::Tripod => vec![
+            TetracubeType::Tripod => [
                 IVec3::new(0, 0, 0),
                 IVec3::new(1, 0, 0),
                 IVec3::new(0, 1, 0),
                 IVec3::new(0, 0, 1),
             ],
-            TetracubeType::ScrewL => vec![
+            TetracubeType::ScrewL => [
                 IVec3::new(0, 0, 0),
                 IVec3::new(1, 0, 0),
                 IVec3::new(1, 1, 0),
                 IVec3::new(1, 1, 1),
             ],
-            TetracubeType::ScrewR => vec![
+            TetracubeType::ScrewR => [
                 IVec3::new(0, 0, 0),
                 IVec3::new(1, 0, 0),
                 IVec3::new(1, 1, 0),
@@ -92,7 +92,7 @@ impl TetracubeType {
 #[derive(Component, Clone)]
 pub struct Tetracube {
     pub piece_type: TetracubeType,
-    pub positions: Vec<IVec3>, // Relative positions to the pivot
+    pub positions: [IVec3; 4], // Relative positions to the pivot
     pub pivot: IVec3,          // Global position
     pub color: Color,
 }
@@ -230,11 +230,10 @@ pub fn try_rotate_with_kicks(
     forward: bool,
     grid: &GameGrid,
 ) -> bool {
-    let new_positions: Vec<IVec3> = tetracube
-        .positions
-        .iter()
-        .map(|p| rotate_point(*p, axis, forward))
-        .collect();
+    let mut new_positions = [IVec3::ZERO; 4];
+    for (i, p) in tetracube.positions.iter().enumerate() {
+        new_positions[i] = rotate_point(*p, axis, forward);
+    }
 
     // Kick offsets to try: (0,0,0) then simple nudges
     let kicks = [
@@ -373,7 +372,7 @@ mod tests {
     #[test]
     fn test_can_place_collision() {
         let mut grid = GameGrid::new();
-        let positions = vec![IVec3::ZERO, IVec3::new(1, 0, 0)];
+        let positions = [IVec3::ZERO, IVec3::new(1, 0, 0), IVec3::new(0, 1, 0), IVec3::new(1, 1, 0)];
         let pivot = IVec3::new(2, 2, 2);
 
         // Valid
@@ -394,7 +393,7 @@ mod tests {
         let mut dirty = DirtyGrid(false);
         let tetracube = Tetracube {
             piece_type: TetracubeType::I,
-            positions: vec![IVec3::ZERO],
+            positions: [IVec3::ZERO, IVec3::ZERO, IVec3::ZERO, IVec3::ZERO],
             pivot: IVec3::new(0, 0, 0),
             color: Color::WHITE,
         };
@@ -408,7 +407,7 @@ mod tests {
         // Game over (locks at or above GRID_HEIGHT)
         let tetracube_high = Tetracube {
             piece_type: TetracubeType::I,
-            positions: vec![IVec3::ZERO],
+            positions: [IVec3::ZERO, IVec3::ZERO, IVec3::ZERO, IVec3::ZERO],
             pivot: IVec3::new(0, GRID_HEIGHT, 0),
             color: Color::WHITE,
         };
@@ -474,27 +473,6 @@ mod tests {
 
     #[test]
     fn test_try_rotate_with_kicks_floor() {
-        // I piece lying flat at y=0. Pivot at y=0.
-        // Rotation might push some blocks to y=-1, requiring a floor kick (upwards).
-        let mut tetracube = Tetracube {
-            piece_type: TetracubeType::I,
-            positions: vec![IVec3::new(0, 0, 0), IVec3::new(0, 1, 0)], // Vertical 2-block piece
-            pivot: IVec3::new(2, 0, 2),
-            color: Color::WHITE,
-        };
-
-        // Rotate around X axis such that it would go below floor if not kicked
-        // Before: (2,0,2), (2,1,2)
-        // Rotate X (forward): (x, -z, y) relative
-        // (0,0,0) -> (0,0,0)
-        // (0,1,0) -> (0,0,1)
-        // This specific rotation doesn't hit floor.
-
-        // Let's try one that DOES hit the floor.
-        tetracube.positions = vec![IVec3::new(0, 0, 0), IVec3::new(0, 0, 1)];
-        // Rotate around X (inverse): (x, z, -y) relative
-        // (0,0,1) -> (0,1,0) - No.
-
         // Actually, let's just test that a kick happens if needed.
         // Place block that blocks normal rotation, but allows a kicked one.
         let mut grid = GameGrid::new();
@@ -502,13 +480,10 @@ mod tests {
 
         let mut tetracube = Tetracube {
             piece_type: TetracubeType::I,
-            positions: vec![IVec3::new(0, 0, 0), IVec3::new(0, 1, 0)],
+            positions: [IVec3::new(0, 0, 0), IVec3::new(0, 1, 0), IVec3::ZERO, IVec3::ZERO],
             pivot: IVec3::new(2, 0, 2),
             color: Color::WHITE,
         };
-
-        // Rotate Y (forward): (z, y, -x) relative
-        // (0,1,0) -> (0,1,0) - No change in y.
 
         // Simple case: try_rotate_with_kicks should return true if valid.
         assert!(try_rotate_with_kicks(&mut tetracube, IVec3::Y, true, &grid));
@@ -519,7 +494,7 @@ mod tests {
         let mut grid = GameGrid::new();
         let tetracube = Tetracube {
             piece_type: TetracubeType::I,
-            positions: vec![IVec3::ZERO],
+            positions: [IVec3::ZERO, IVec3::ZERO, IVec3::ZERO, IVec3::ZERO],
             pivot: IVec3::new(0, 10, 0),
             color: Color::WHITE,
         };
@@ -601,7 +576,7 @@ mod tests {
         let mut dirty = DirtyGrid(false);
         let tetracube = Tetracube {
             piece_type: TetracubeType::I,
-            positions: vec![IVec3::ZERO],
+            positions: [IVec3::ZERO, IVec3::ZERO, IVec3::ZERO, IVec3::ZERO],
             pivot: IVec3::new(-1, 0, 0), // OOB X
             color: Color::WHITE,
         };
@@ -617,7 +592,7 @@ mod tests {
         // Let's use a piece that MUST kick.
         let mut tetracube = Tetracube {
             piece_type: TetracubeType::I,
-            positions: vec![IVec3::ZERO, IVec3::new(0, 1, 0)],
+            positions: [IVec3::ZERO, IVec3::new(0, 1, 0), IVec3::ZERO, IVec3::ZERO],
             pivot: IVec3::new(GRID_WIDTH - 1, 0, 0),
             color: Color::WHITE,
         };
