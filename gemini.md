@@ -33,7 +33,7 @@ This is a 3D puzzle game involving tetracubes written in Rust using the Bevy gam
   - `Intro` -> `Playing` via 'G' key.
   - `Playing` -> `Paused` via 'P' key.
   - `GameOver` -> `Playing` via 'R' key (resets grid).
-- **Audio**: Sound effects for move, rotate, drop, and clear. Loops background music. Requires assets in `assets/sounds/`.
+- **Audio**: Sound effects for move, rotate, drop, and clear. Loops background music. Bundled assets live in `assets/sounds/` and can be regenerated with `python3 scripts/generate_audio.py`.
 - **Testing**:
   - Pure logic tests in `src/game.rs`.
   - System tests in `src/main.rs` using a mock `App` with `MinimalPlugins` and `StatesPlugin`.

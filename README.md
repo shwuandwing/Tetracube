@@ -27,7 +27,13 @@ Prerequisites: Rust installed.
 ```bash
 cargo run
 ```
-Note: You must provide your own sound files in `assets/sounds/` (move.ogg, rotate.ogg, drop.ogg, clear.ogg) to hear audio.
+Bundled audio ships in `assets/sounds/`. To regenerate the default soundtrack and sound effects:
+
+```bash
+python3 scripts/generate_audio.py
+```
+
+This requires `ffmpeg` to be installed because the script renders `.wav` files and converts them to `.ogg`.
 
 ## Development
 - **Engine**: Bevy 0.17 (or latest stable)

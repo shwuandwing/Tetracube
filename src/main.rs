@@ -1,3 +1,4 @@
+use bevy::audio::Volume;
 use bevy::prelude::*;
 use rand::Rng;
 use std::time::Duration;
@@ -68,9 +69,23 @@ struct AudioHandles {
     bgm: Handle<AudioSource>,
 }
 
+const BGM_VOLUME: f32 = 0.28;
+const MOVE_SFX_VOLUME: f32 = 0.24;
+const ROTATE_SFX_VOLUME: f32 = 0.28;
+const DROP_SFX_VOLUME: f32 = 0.34;
+const CLEAR_SFX_VOLUME: f32 = 0.38;
+
 /// Cache for landed blocks rendering information.
 #[derive(Resource, Default)]
 struct LandedIndicators(Vec<(Transform, Color)>);
+
+fn looped_audio(volume: f32) -> PlaybackSettings {
+    PlaybackSettings::LOOP.with_volume(Volume::Linear(volume))
+}
+
+fn one_shot_audio(volume: f32) -> PlaybackSettings {
+    PlaybackSettings::DESPAWN.with_volume(Volume::Linear(volume))
+}
 
 fn main() {
     App::new()
@@ -176,7 +191,7 @@ fn setup(
     // Start background music
     commands.spawn((
         AudioPlayer::new(audio_handles.bgm.clone()),
-        PlaybackSettings::LOOP,
+        looped_audio(BGM_VOLUME),
     ));
 
     commands.insert_resource(audio_handles);
@@ -466,7 +481,7 @@ fn tetracube_movement(
                     tetracube.pivot += move_delta;
                     commands.spawn((
                         AudioPlayer::new(audio.move_sound.clone()),
-                        PlaybackSettings::DESPAWN,
+                        one_shot_audio(MOVE_SFX_VOLUME),
                     ));
                 }
             }
@@ -481,7 +496,7 @@ fn tetracube_movement(
             if try_rotate_with_kicks(&mut tetracube, IVec3::Y, forward, &game_grid) {
                 commands.spawn((
                     AudioPlayer::new(audio.rotate_sound.clone()),
-                    PlaybackSettings::DESPAWN,
+                    one_shot_audio(ROTATE_SFX_VOLUME),
                 ));
             }
         }
@@ -490,7 +505,7 @@ fn tetracube_movement(
             if try_rotate_with_kicks(&mut tetracube, IVec3::X, forward, &game_grid) {
                 commands.spawn((
                     AudioPlayer::new(audio.rotate_sound.clone()),
-                    PlaybackSettings::DESPAWN,
+                    one_shot_audio(ROTATE_SFX_VOLUME),
                 ));
             }
         }
@@ -499,7 +514,7 @@ fn tetracube_movement(
             if try_rotate_with_kicks(&mut tetracube, IVec3::Z, forward, &game_grid) {
                 commands.spawn((
                     AudioPlayer::new(audio.rotate_sound.clone()),
-                    PlaybackSettings::DESPAWN,
+                    one_shot_audio(ROTATE_SFX_VOLUME),
                 ));
             }
         }
@@ -511,7 +526,7 @@ fn tetracube_movement(
                 tetracube.pivot = new_pivot;
                 commands.spawn((
                     AudioPlayer::new(audio.drop_sound.clone()),
-                    PlaybackSettings::DESPAWN,
+                    one_shot_audio(DROP_SFX_VOLUME),
                 ));
             }
             // Lock immediately
@@ -624,7 +639,7 @@ fn check_layers(
         }
         commands.spawn((
             AudioPlayer::new(audio.clear_sound.clone()),
-            PlaybackSettings::DESPAWN,
+            one_shot_audio(CLEAR_SFX_VOLUME),
         ));
     }
 }
